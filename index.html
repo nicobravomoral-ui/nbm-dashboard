@@ -330,7 +330,11 @@ function calcMes(m) {
   const ppmMes = m.comisiones * ppm;
   const utilidad = m.comisiones - gastoNeto - m.sueldo;
   const totalF29 = ivaPagar + ppmMes;
-  const caja = m.comisiones - gastoNeto - m.sueldo - m.retiro - ivaPagar - ppmMes;
+  // IVA es neutro: cobras ivaDebito, pagas ivaDebito al SII (menos ivaCredito de gastos)
+  // El ivaCredito te ahorra plata en el F29, pero pagaste gastos+IVA al proveedor
+  // Caja neta = comisiones - gastoNeto - sueldo - retiro - ppmMes
+  // (el IVA entra y sale, efecto neto = cero sin gastos)
+  const caja = m.comisiones - gastoNeto - m.sueldo - m.retiro - ppmMes;
   return { ivaDebito, ivaCredito, ivaPagar, ppmMes, utilidad, totalF29, caja, gastoNeto };
 }
 
