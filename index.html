@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<title>NBM — Dashboard Tributario</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #111118;
+  --bg3: #18181f;
+  --bg4: #1e1e28;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #f0f0f5;
+  --text2: #9090a8;
+  --text3: #55556a;
+  --accent: #4f8fff;
+  --accent2: #2a5ccc;
+  --green: #2ecc8a;
+  --green2: #1a7a52;
+  --amber: #f5a623;
+  --amber2: #8a5c10;
+  --red: #e84040;
+  --red2: #7a1f1f;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --mono: 'DM Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { background: var(--bg); }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 80px; }
+
+/* HEADER */
+.header { padding: 20px 16px 0; }
+.header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+.brand { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--text3); text-transform: uppercase; }
+.rut { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+.header h1 span { color: var(--accent); }
+.regime-badge { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: rgba(79,143,255,0.1); border: 1px solid rgba(79,143,255,0.2); border-radius: 20px; padding: 3px 10px; }
+.regime-badge::before { content: ''; width: 5px; height: 5px; background: var(--accent); border-radius: 50%; }
+
+/* NAV */
+.nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10,10,15,0.95); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border: none; background: none; color: var(--text3); font-family: var(--sans); font-size: 10px; font-weight: 500; cursor: pointer; transition: color 0.2s; }
+.nav-btn.active { color: var(--accent); }
+.nav-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* PANELS */
+.panel { display: none; padding: 20px 16px; }
+.panel.active { display: block; }
+
+/* METRIC CARDS */
+.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.metric-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.metric-card.full { grid-column: 1 / -1; }
+.metric-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+.metric-value { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--text); line-height: 1; }
+.metric-value.green { color: var(--green); }
+.metric-value.amber { color: var(--amber); }
+.metric-value.red { color: var(--red); }
+.metric-sub { font-size: 11px; color: var(--text3); margin-top: 5px; font-family: var(--mono); }
+
+/* SECTION */
+.section { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+.section-header { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); }
+.section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); }
+.section-body { padding: 4px 0; }
+
+/* ROWS */
+.row { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--border); }
+.row:last-child { border-bottom: none; }
+.row-label { font-size: 13px; color: var(--text2); }
+.row-value { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); }
+.row-value.green { color: var(--green); }
+.row-value.amber { color: var(--amber); }
+.row-value.red { color: var(--red); }
+.row.total-row { background: var(--bg4); }
+.row.total-row .row-label { font-weight: 600; color: var(--text); font-size: 13px; }
+.row.total-row .row-value { font-size: 15px; }
+
+/* FORMS */
+.form-section { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.form-title { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 14px; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+.field input, .field select { width: 100%; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 11px 12px; font-family: var(--mono); font-size: 14px; color: var(--text); -webkit-appearance: none; appearance: none; }
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+.field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239090a8' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+.field .hint { font-size: 11px; color: var(--text3); margin-top: 4px; font-family: var(--mono); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* GASTO LIST */
+.gasto-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.gasto-item:last-child { border-bottom: none; }
+.gasto-desc { font-size: 13px; color: var(--text2); }
+.gasto-monto { font-family: var(--mono); font-size: 13px; color: var(--amber); }
+.gasto-del { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--red); font-size: 14px; width: 26px; height: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-left: 10px; }
+.add-gasto-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: flex-end; margin-top: 10px; }
+.add-gasto-row input { flex: 1; }
+
+/* BUTTONS */
+.btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 14px; border: none; border-radius: var(--radius-sm); font-family: var(--sans); font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--bg4); color: var(--text2); border: 1px solid var(--border2); }
+.btn-sm { width: auto; padding: 8px 14px; font-size: 12px; }
+.btn-add { background: rgba(79,143,255,0.15); color: var(--accent); border: 1px solid rgba(79,143,255,0.25); padding: 10px 14px; }
+
+/* HISTORIAL TABLE */
+.hist-table { width: 100%; border-collapse: collapse; }
+.hist-table th { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+.hist-table td { font-size: 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text2); font-family: var(--mono); }
+.hist-table tr:last-child td { border-bottom: none; }
+.hist-table td:first-child { color: var(--text); font-family: var(--sans); font-weight: 500; font-size: 13px; }
+.hist-table .neg { color: var(--red); }
+.hist-table .pos { color: var(--green); }
+.del-btn { background: none; border: none; color: var(--text3); font-size: 16px; cursor: pointer; padding: 2px 6px; }
+
+/* CHART */
+.chart-wrap { position: relative; width: 100%; height: 220px; padding: 16px; }
+
+/* EMPTY */
+.empty { text-align: center; padding: 40px 20px; color: var(--text3); font-size: 13px; }
+.empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+/* ALERT */
+.alert { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.25); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; color: var(--amber); margin-bottom: 14px; line-height: 1.5; }
+
+/* PROY */
+.proy-note { font-size: 11px; color: var(--text3); font-family: var(--mono); padding: 10px 16px; line-height: 1.6; }
+
+/* LEGEND */
+.legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 16px 14px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text3); }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* SCROLLABLE TABLE WRAPPER */
+.table-scroll { overflow-x: auto; }
+
+@media (max-width: 360px) {
+  .header h1 { font-size: 22px; }
+  .metric-value { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="brand">Asesorías e Inversiones</div>
+      <h1>NBM<span>.</span></h1>
+    </div>
+    <div class="rut">78.367.557-9</div>
+  </div>
+  <div class="regime-badge">ProPyme General · 14D N°3</div>
+</div>
+
+<!-- PANEL: RESUMEN -->
+<div id="panel-resumen" class="panel active">
+  <div id="alert-box" class="alert" style="display:none;"></div>
+  <div class="metrics-grid" id="metrics-top"></div>
+
+  <div class="section">
+    <div class="section-header"><div class="section-title">Flujo del último mes</div></div>
+    <div class="section-body" id="flujo-mes"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><div class="section-title">Obligaciones tributarias</div></div>
+    <div class="section-body" id="obligaciones"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><div class="section-title">Evolución mensual</div></div>
+    <div class="legend" id="chart-legend"></div>
+    <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+  </div>
+</div>
+
+<!-- PANEL: INGRESAR -->
+<div id="panel-ingresar" class="panel">
+  <div class="form-section">
+    <div class="form-title">Ingresos del mes</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Mes</label>
+        <select id="inp-mes">
+          <option>Enero</option><option>Febrero</option><option selected>Marzo</option>
+          <option>Abril</option><option>Mayo</option><option>Junio</option>
+          <option>Julio</option><option>Agosto</option><option>Septiembre</option>
+          <option>Octubre</option><option>Noviembre</option><option>Diciembre</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Año</label>
+        <select id="inp-anio">
+          <option>2026</option><option>2027</option><option>2028</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Comisiones netas (sin IVA) $</label>
+      <input type="number" id="inp-comisiones" placeholder="0" min="0" inputmode="numeric">
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-title">Gastos operacionales</div>
+    <div class="hint" style="font-size:11px;color:var(--text3);margin-bottom:12px;font-family:var(--mono);">Solo gastos con factura → generan IVA crédito y son deducibles</div>
+    <div id="gastos-list"></div>
+    <div class="add-gasto-row">
+      <div class="field" style="margin:0;">
+        <input type="text" id="gasto-desc" placeholder="Descripción (ej: arriendo)">
+      </div>
+      <div class="field" style="margin:0;">
+        <input type="number" id="gasto-monto" placeholder="Monto $" min="0" inputmode="numeric" style="width:120px;">
+      </div>
+      <button class="btn btn-sm btn-add" onclick="agregarGasto()">+ Agregar</button>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-title">Remuneración y retiros</div>
+    <div class="field">
+      <label>Sueldo empresarial bruto $</label>
+      <input type="number" id="inp-sueldo" placeholder="0" min="0" inputmode="numeric">
+      <div class="hint">Gasto empresa · tributa en 2ª cat. + cotizaciones</div>
+    </div>
+    <div class="field">
+      <label>Retiro de utilidades $</label>
+      <input type="number" id="inp-retiro" placeholder="0" min="0" inputmode="numeric">
+      <div class="hint">Tributa en Global Complementario anual</div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-title">Parámetros tributarios</div>
+    <div class="field-row">
+      <div class="field">
+        <label>IVA %</label>
+        <input type="number" id="inp-iva" value="19" min="0" max="30" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label>PPM %</label>
+        <input type="number" id="inp-ppm" value="0.2" step="0.01" min="0" inputmode="decimal">
+        <div class="hint">Ajustar si SII cambia</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="guardarMes()" style="margin-bottom:14px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    Guardar mes
+  </button>
+</div>
+
+<!-- PANEL: HISTORIAL -->
+<div id="panel-historial" class="panel">
+  <div class="section">
+    <div class="section-header"><div class="section-title">Meses registrados</div></div>
+    <div class="table-scroll">
+      <div id="historial-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL: PROYECCIÓN -->
+<div id="panel-proyeccion" class="panel">
+  <div class="metrics-grid" id="proy-metrics"></div>
+
+  <div class="section">
+    <div class="section-header"><div class="section-title">Estimación IDPC anual (25%)</div></div>
+    <div class="section-body" id="proy-idpc"></div>
+    <div class="proy-note" id="proy-note"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><div class="section-title">Proyección de caja 12 meses</div></div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="proyChart"></canvas></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPanel('resumen',this)">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Resumen
+  </button>
+  <button class="nav-btn" onclick="showPanel('ingresar',this)">
+    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Ingresar
+  </button>
+  <button class="nav-btn" onclick="showPanel('historial',this)">
+    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    Historial
+  </button>
+  <button class="nav-btn" onclick="showPanel('proyeccion',this)">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Proyección
+  </button>
+</nav>
+
+<script>
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let data = JSON.parse(localStorage.getItem('nbm_v2') || '[]');
+let gastosTemp = [];
+let mainChartInst = null, proyChartInst = null;
+
+function fmt(n) {
+  const abs = Math.abs(Math.round(n));
+  return (n < 0 ? '-' : '') + '$' + abs.toLocaleString('es-CL');
+}
+
+function calcMes(m) {
+  const iva = (m.tasaIva || 19) / 100;
+  const ppm = (m.tasaPpm || 0.2) / 100;
+  const ivaDebito = m.comisiones * iva;
+  const gastoNeto = (m.gastos || []).reduce((a, g) => a + g.monto, 0);
+  const ivaCredito = gastoNeto * iva;
+  const ivaPagar = Math.max(0, ivaDebito - ivaCredito);
+  const ppmMes = m.comisiones * ppm;
+  const utilidad = m.comisiones - gastoNeto - m.sueldo;
+  const totalF29 = ivaPagar + ppmMes;
+  const caja = m.comisiones - gastoNeto - m.sueldo - m.retiro - ivaPagar - ppmMes;
+  return { ivaDebito, ivaCredito, ivaPagar, ppmMes, utilidad, totalF29, caja, gastoNeto };
+}
+
+function save() { localStorage.setItem('nbm_v2', JSON.stringify(data)); }
+
+function showPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'resumen') renderResumen();
+  if (id === 'historial') renderHistorial();
+  if (id === 'proyeccion') renderProyeccion();
+}
+
+function agregarGasto() {
+  const desc = document.getElementById('gasto-desc').value.trim();
+  const monto = parseFloat(document.getElementById('gasto-monto').value) || 0;
+  if (!desc || monto <= 0) return;
+  gastosTemp.push({ desc, monto });
+  document.getElementById('gasto-desc').value = '';
+  document.getElementById('gasto-monto').value = '';
+  renderGastosTemp();
+}
+
+function renderGastosTemp() {
+  const el = document.getElementById('gastos-list');
+  if (!gastosTemp.length) { el.innerHTML = ''; return; }
+  el.innerHTML = gastosTemp.map((g, i) => `
+    <div class="gasto-item">
+      <span class="gasto-desc">${g.desc}</span>
+      <div style="display:flex;align-items:center;">
+        <span class="gasto-monto">${fmt(g.monto)}</span>
+        <button class="gasto-del" onclick="quitarGasto(${i})">×</button>
+      </div>
+    </div>`).join('');
+}
+
+function quitarGasto(i) { gastosTemp.splice(i, 1); renderGastosTemp(); }
+
+function guardarMes() {
+  const mes = document.getElementById('inp-mes').value;
+  const anio = document.getElementById('inp-anio').value;
+  const comisiones = parseFloat(document.getElementById('inp-comisiones').value) || 0;
+  const sueldo = parseFloat(document.getElementById('inp-sueldo').value) || 0;
+  const retiro = parseFloat(document.getElementById('inp-retiro').value) || 0;
+  const tasaIva = parseFloat(document.getElementById('inp-iva').value) || 19;
+  const tasaPpm = parseFloat(document.getElementById('inp-ppm').value) || 0.2;
+
+  if (comisiones === 0) { alert('Ingresa al menos las comisiones del mes'); return; }
+
+  const key = `${mes}-${anio}`;
+  const idx = data.findIndex(d => d.key === key);
+  const reg = { key, mes, anio, comisiones, sueldo, retiro, tasaIva, tasaPpm, gastos: [...gastosTemp] };
+  if (idx >= 0) data[idx] = reg; else data.push(reg);
+
+  data.sort((a, b) => {
+    const ya = parseInt(a.anio), yb = parseInt(b.anio);
+    if (ya !== yb) return ya - yb;
+    return MESES.indexOf(a.mes) - MESES.indexOf(b.mes);
+  });
+
+  gastosTemp = [];
+  renderGastosTemp();
+  save();
+  renderResumen();
+  showPanel('resumen', document.querySelector('.nav-btn'));
+  document.querySelector('.nav-btn').classList.add('active');
+  document.querySelectorAll('.nav-btn')[0].classList.add('active');
+}
+
+function eliminarMes(key) {
+  if (!confirm('¿Eliminar este mes?')) return;
+  data = data.filter(d => d.key !== key);
+  save();
+  renderHistorial();
+  renderResumen();
+}
+
+function renderResumen() {
+  if (!data.length) {
+    document.getElementById('metrics-top').innerHTML = `<div class="metric-card full"><div class="empty"><div class="empty-icon">📊</div>Aún no hay meses registrados.<br>Ve a <strong>Ingresar</strong> para empezar.</div></div>`;
+    document.getElementById('flujo-mes').innerHTML = '';
+    document.getElementById('obligaciones').innerHTML = '';
+    document.getElementById('chart-legend').innerHTML = '';
+    if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
+    return;
+  }
+
+  const ultimo = data[data.length - 1];
+  const c = calcMes(ultimo);
+  const totalIng = data.reduce((a, m) => a + m.comisiones, 0);
+  const totalIva = data.reduce((a, m) => a + calcMes(m).ivaPagar, 0);
+  const totalPpm = data.reduce((a, m) => a + calcMes(m).ppmMes, 0);
+  const totalCaja = data.reduce((a, m) => a + calcMes(m).caja, 0);
+
+  document.getElementById('metrics-top').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">Ingresos acum.</div>
+      <div class="metric-value">${fmt(totalIng)}</div>
+      <div class="metric-sub">neto sin IVA</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Caja neta acum.</div>
+      <div class="metric-value ${totalCaja >= 0 ? 'green' : 'red'}">${fmt(totalCaja)}</div>
+      <div class="metric-sub">después de todo</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">IVA pagado acum.</div>
+      <div class="metric-value amber">${fmt(totalIva)}</div>
+      <div class="metric-sub">F29</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">PPM pagado acum.</div>
+      <div class="metric-value amber">${fmt(totalPpm)}</div>
+      <div class="metric-sub">anticipo IDPC</div>
+    </div>`;
+
+  document.getElementById('flujo-mes').innerHTML = `
+    <div class="row"><span class="row-label">Ingreso neto (${ultimo.mes} ${ultimo.anio})</span><span class="row-value green">${fmt(ultimo.comisiones)}</span></div>
+    <div class="row"><span class="row-label">Gastos operacionales</span><span class="row-value red">-${fmt(c.gastoNeto)}</span></div>
+    <div class="row"><span class="row-label">Sueldo empresarial</span><span class="row-value red">-${fmt(ultimo.sueldo)}</span></div>
+    <div class="row"><span class="row-label">Retiro de utilidades</span><span class="row-value red">-${fmt(ultimo.retiro)}</span></div>
+    <div class="row"><span class="row-label">IVA neto F29</span><span class="row-value amber">-${fmt(c.ivaPagar)}</span></div>
+    <div class="row"><span class="row-label">PPM</span><span class="row-value amber">-${fmt(c.ppmMes)}</span></div>
+    <div class="row total-row"><span class="row-label">Caja disponible</span><span class="row-value ${c.caja >= 0 ? 'green' : 'red'}">${fmt(c.caja)}</span></div>`;
+
+  document.getElementById('obligaciones').innerHTML = `
+    <div class="row"><span class="row-label">IVA débito cobrado</span><span class="row-value">${fmt(c.ivaDebito)}</span></div>
+    <div class="row"><span class="row-label">IVA crédito (gastos)</span><span class="row-value green">-${fmt(c.ivaCredito)}</span></div>
+    <div class="row"><span class="row-label">IVA neto a declarar</span><span class="row-value amber">${fmt(c.ivaPagar)}</span></div>
+    <div class="row"><span class="row-label">PPM del mes</span><span class="row-value amber">${fmt(c.ppmMes)}</span></div>
+    <div class="row total-row"><span class="row-label">Total F29 (vence el 12)</span><span class="row-value amber">${fmt(c.totalF29)}</span></div>`;
+
+  const labels = data.map(d => d.mes.substring(0, 3));
+  const ingresos = data.map(d => d.comisiones);
+  const f29s = data.map(d => calcMes(d).totalF29);
+  const cajas = data.map(d => calcMes(d).caja);
+
+  document.getElementById('chart-legend').innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:#4f8fff;"></div>Ingresos</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f5a623;"></div>F29 total</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#2ecc8a;"></div>Caja neta</div>`;
+
+  if (mainChartInst) mainChartInst.destroy();
+  mainChartInst = new Chart(document.getElementById('mainChart'), {
+    data: {
+      labels,
+      datasets: [
+        { type: 'bar', label: 'Ingresos', data: ingresos, backgroundColor: 'rgba(79,143,255,0.7)', borderRadius: 5 },
+        { type: 'bar', label: 'F29', data: f29s, backgroundColor: 'rgba(245,166,35,0.7)', borderRadius: 5 },
+        { type: 'line', label: 'Caja neta', data: cajas, borderColor: '#2ecc8a', backgroundColor: 'rgba(46,204,138,0.1)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#2ecc8a' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#55556a', font: { size: 11 }, autoSkip: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#55556a', font: { size: 11 }, callback: v => '$' + Math.round(v / 1000) + 'k' } }
+      }
+    }
+  });
+}
+
+function renderHistorial() {
+  const el = document.getElementById('historial-content');
+  if (!data.length) { el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>No hay meses registrados aún.</div>`; return; }
+  el.innerHTML = `<table class="hist-table">
+    <thead><tr><th>Mes</th><th>Ingresos</th><th>F29</th><th>Caja</th><th></th></tr></thead>
+    <tbody>${data.map(m => {
+      const c = calcMes(m);
+      return `<tr>
+        <td>${m.mes}<br><span style="font-size:10px;color:var(--text3);">${m.anio}</span></td>
+        <td>${fmt(m.comisiones)}</td>
+        <td class="neg">-${fmt(c.totalF29)}</td>
+        <td class="${c.caja >= 0 ? 'pos' : 'neg'}">${fmt(c.caja)}</td>
+        <td><button class="del-btn" onclick="eliminarMes('${m.key}')">×</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function renderProyeccion() {
+  if (!data.length) {
+    document.getElementById('proy-metrics').innerHTML = `<div class="metric-card full"><div class="empty"><div class="empty-icon">📈</div>Ingresa al menos un mes para ver proyecciones.</div></div>`;
+    document.getElementById('proy-idpc').innerHTML = '';
+    if (proyChartInst) { proyChartInst.destroy(); proyChartInst = null; }
+    return;
+  }
+
+  const n = data.length;
+  const avgIng = data.reduce((a, m) => a + m.comisiones, 0) / n;
+  const avgGasto = data.reduce((a, m) => a + calcMes(m).gastoNeto, 0) / n;
+  const avgSueldo = data.reduce((a, m) => a + m.sueldo, 0) / n;
+  const avgPpm = data.reduce((a, m) => a + calcMes(m).ppmMes, 0) / n;
+
+  const proyIng = avgIng * 12;
+  const proyGasto = avgGasto * 12;
+  const proySueldo = avgSueldo * 12;
+  const proyUtil = proyIng - proyGasto - proySueldo;
+  const idpc = Math.max(0, proyUtil * 0.25);
+  const proyPpm = avgPpm * 12;
+  const idpcNeto = Math.max(0, idpc - proyPpm);
+
+  document.getElementById('proy-metrics').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">Ingresos proyectados</div>
+      <div class="metric-value">${fmt(proyIng)}</div>
+      <div class="metric-sub">12 meses estimados</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Utilidad proyectada</div>
+      <div class="metric-value ${proyUtil >= 0 ? 'green' : 'red'}">${fmt(proyUtil)}</div>
+      <div class="metric-sub">antes de IDPC</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">IDPC estimado</div>
+      <div class="metric-value amber">${fmt(idpc)}</div>
+      <div class="metric-sub">25% · se paga en abril</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">IDPC neto a pagar</div>
+      <div class="metric-value amber">${fmt(idpcNeto)}</div>
+      <div class="metric-sub">menos PPM pagados</div>
+    </div>`;
+
+  document.getElementById('proy-idpc').innerHTML = `
+    <div class="row"><span class="row-label">Ingresos netos proyectados</span><span class="row-value">${fmt(proyIng)}</span></div>
+    <div class="row"><span class="row-label">Gastos deducibles proyectados</span><span class="row-value red">-${fmt(proyGasto)}</span></div>
+    <div class="row"><span class="row-label">Sueldo empresarial proyectado</span><span class="row-value red">-${fmt(proySueldo)}</span></div>
+    <div class="row"><span class="row-label">Utilidad base imponible</span><span class="row-value">${fmt(proyUtil)}</span></div>
+    <div class="row"><span class="row-label">IDPC bruto (25%)</span><span class="row-value amber">-${fmt(idpc)}</span></div>
+    <div class="row"><span class="row-label">PPM ya pagados (descuento)</span><span class="row-value green">-${fmt(proyPpm)}</span></div>
+    <div class="row total-row"><span class="row-label">Saldo IDPC · abril 2027</span><span class="row-value amber">${fmt(idpcNeto)}</span></div>`;
+
+  document.getElementById('proy-note').textContent = `Proyección basada en el promedio de ${n} mes${n > 1 ? 'es' : ''} registrado${n > 1 ? 's' : ''}. Los meses sin datos usan el promedio actual.`;
+
+  const allMonths = MESES.map(mes => {
+    const reg = data.find(d => d.mes === mes && d.anio === '2026');
+    if (reg) { const c = calcMes(reg); return { ing: reg.comisiones, caja: c.caja, real: true }; }
+    const avgIva = data.reduce((a, m) => a + calcMes(m).ivaPagar, 0) / n;
+    return { ing: avgIng, caja: avgIng - avgGasto - avgSueldo - avgPpm - avgIva, real: false };
+  });
+
+  if (proyChartInst) proyChartInst.destroy();
+  proyChartInst = new Chart(document.getElementById('proyChart'), {
+    type: 'bar',
+    data: {
+      labels: MESES.map(m => m.substring(0, 3)),
+      datasets: [
+        { label: 'Ingresos', data: allMonths.map(m => m.ing), backgroundColor: allMonths.map(m => m.real ? 'rgba(79,143,255,0.8)' : 'rgba(79,143,255,0.2)'), borderRadius: 4 },
+        { label: 'Caja neta', data: allMonths.map(m => m.caja), backgroundColor: allMonths.map(m => m.real ? 'rgba(46,204,138,0.8)' : 'rgba(46,204,138,0.2)'), borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#55556a', font: { size: 10 }, autoSkip: false, maxRotation: 0 } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#55556a', font: { size: 10 }, callback: v => '$' + Math.round(v / 1000) + 'k' } }
+      }
+    }
+  });
+}
+
+renderResumen();
+</script>
+</body>
+</html>
