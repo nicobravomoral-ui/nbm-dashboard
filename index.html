@@ -172,7 +172,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex
       <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Historial
     </button>
     <button class="nav-item" onclick="show('proyeccion',this)">
-      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Proyección anual
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Acumulado real
     </button>
   </div>
   <div class="sb-footer"><div class="regime-pill">ProPyme General · 14D N°3</div></div>
@@ -273,18 +273,25 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex
   <div id="hcontent"></div>
 </div>
 
-<!-- PROYECCIÓN -->
+<!-- ACUMULADO REAL -->
 <div id="panel-proyeccion" class="panel">
-  <div class="panel-title">Proyección anual</div>
-  <div class="panel-sub">Estimación basada en el promedio de meses registrados</div>
+  <div class="panel-title">Acumulado real</div>
+  <div class="panel-sub">Números reales del año — sin proyecciones ni promedios</div>
   <div class="mgrid" id="pmgrid"></div>
+
   <div class="card">
-    <div class="card-hdr"><div class="card-title">Estimación IDPC anual (25%)</div></div>
+    <div class="card-hdr"><div class="card-title">IVA — posición acumulada</div></div>
+    <div id="piva"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-hdr"><div class="card-title">IDPC estimado sobre utilidad real</div></div>
     <div id="pidpc"></div>
     <div style="padding:10px 18px;font-size:11px;color:var(--text3)" id="pnote"></div>
   </div>
+
   <div class="card" style="margin-top:16px">
-    <div class="card-hdr"><div class="card-title">Proyección caja 12 meses</div></div>
+    <div class="card-hdr"><div class="card-title">Ingresos y caja por mes</div></div>
     <div style="display:flex;gap:14px;padding:12px 18px 0;flex-wrap:wrap" id="plegend"></div>
     <div class="chart-wrap"><canvas id="proyChart"></canvas></div>
   </div>
@@ -489,39 +496,81 @@ function renderResumen(){
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:11},autoSkip:false}},y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:11},callback:v=>'$'+Math.round(v/1000)+'k'}}}}});
 }
 
-// PROYECCIÓN
+// ACUMULADO REAL
 function renderProyeccion(){
-  if(!data.length){document.getElementById('pmgrid').innerHTML='<div style="grid-column:1/-1"><div class="empty"><div class="empty-icon">📈</div><p>Ingresa al menos un mes.</p></div></div>';return}
+  const el=document.getElementById('pmgrid');
+  if(!data.length){
+    el.innerHTML='<div style="grid-column:1/-1"><div class="empty"><div class="empty-icon">📊</div><p>Ingresa al menos un mes para ver el acumulado.</p></div></div>';
+    document.getElementById('piva').innerHTML='';
+    document.getElementById('pidpc').innerHTML='';
+    document.getElementById('pnote').textContent='';
+    document.getElementById('plegend').innerHTML='';
+    if(PC){PC.destroy();PC=null}return;
+  }
+
+  // Totales reales
+  const tIng=data.reduce((a,m)=>a+m.comisiones,0);
+  const tGastos=data.reduce((a,m)=>a+calcMes(m).gN,0);
+  const tSueldo=data.reduce((a,m)=>a+(m.sueldo||0),0);
+  const tRetiro=data.reduce((a,m)=>a+(m.retiro||0),0);
+  const tIvaD=data.reduce((a,m)=>a+calcMes(m).ivaD,0);
+  const tIvaC=data.reduce((a,m)=>a+calcMes(m).ivaC,0);
+  const tIvaP=data.reduce((a,m)=>a+calcMes(m).ivaP,0);
+  const tPpm=data.reduce((a,m)=>a+calcMes(m).ppmM,0);
+  const tF29=data.reduce((a,m)=>a+calcMes(m).f29,0);
+  const tCaja=data.reduce((a,m)=>a+calcMes(m).caja,0);
+  const tUtil=tIng-tGastos-tSueldo;
+  const idpcBruto=Math.max(0,tUtil*0.25);
+  const idpcNeto=Math.max(0,idpcBruto-tPpm);
   const n=data.length;
-  const aI=data.reduce((a,m)=>a+m.comisiones,0)/n;
-  const aG=data.reduce((a,m)=>a+calcMes(m).gN,0)/n;
-  const aS=data.reduce((a,m)=>a+(m.sueldo||0),0)/n;
-  const aP=data.reduce((a,m)=>a+calcMes(m).ppmM,0)/n;
-  const pI=aI*12,pG=aG*12,pS=aS*12,pU=pI-pG-pS;
-  const idpc=Math.max(0,pU*.25),pPpm=aP*12,idpcN=Math.max(0,idpc-pPpm);
-  document.getElementById('pmgrid').innerHTML=`
-    <div class="metric"><div class="m-label">Ingresos proyectados</div><div class="m-val">${fmt(pI)}</div><div class="m-sub">12 meses</div></div>
-    <div class="metric"><div class="m-label">Utilidad proyectada</div><div class="m-val ${pU>=0?'g':'r'}">${fmt(pU)}</div><div class="m-sub">antes IDPC</div></div>
-    <div class="metric"><div class="m-label">IDPC estimado</div><div class="m-val a">${fmt(idpc)}</div><div class="m-sub">25% · abril 2027</div></div>
-    <div class="metric"><div class="m-label">IDPC neto</div><div class="m-val a">${fmt(idpcN)}</div><div class="m-sub">menos PPM</div></div>`;
+
+  // Métricas principales
+  el.innerHTML=`
+    <div class="metric"><div class="m-label">Ingresos reales</div><div class="m-val">${fmt(tIng)}</div><div class="m-sub">${n} mes${n>1?'es':''} · neto sin IVA</div></div>
+    <div class="metric"><div class="m-label">Caja neta real</div><div class="m-val ${tCaja>=0?'g':'r'}">${fmt(tCaja)}</div><div class="m-sub">después de impuestos</div></div>
+    <div class="metric"><div class="m-label">F29 pagado total</div><div class="m-val a">${fmt(tF29)}</div><div class="m-sub">IVA + PPM acumulado</div></div>
+    <div class="metric"><div class="m-label">IDPC estimado neto</div><div class="m-val a">${fmt(idpcNeto)}</div><div class="m-sub">a pagar abril 2027</div></div>`;
+
+  // IVA acumulado
+  document.getElementById('piva').innerHTML=`
+    <div class="row"><span class="row-l">IVA débito cobrado (acum.)</span><span class="row-v">${fmt(tIvaD)}</span></div>
+    <div class="row"><span class="row-l">IVA crédito por gastos (acum.)</span><span class="row-v g">${tIvaC>0?'-':''}${fmt(tIvaC)}</span></div>
+    <div class="row tot"><span class="row-l">IVA neto pagado al SII</span><span class="row-v a">${fmt(tIvaP)}</span></div>`;
+
+  // IDPC real
   document.getElementById('pidpc').innerHTML=`
-    <div class="row"><span class="row-l">Ingresos netos proyectados</span><span class="row-v">${fmt(pI)}</span></div>
-    <div class="row"><span class="row-l">Gastos deducibles</span><span class="row-v r">-${fmt(pG)}</span></div>
-    <div class="row"><span class="row-l">Sueldo empresarial</span><span class="row-v r">-${fmt(pS)}</span></div>
-    <div class="row"><span class="row-l">Utilidad base imponible</span><span class="row-v">${fmt(pU)}</span></div>
-    <div class="row"><span class="row-l">IDPC bruto (25%)</span><span class="row-v a">-${fmt(idpc)}</span></div>
-    <div class="row"><span class="row-l">PPM ya pagados</span><span class="row-v g">-${fmt(pPpm)}</span></div>
-    <div class="row tot"><span class="row-l">Saldo IDPC · abril 2027</span><span class="row-v a">${fmt(idpcN)}</span></div>`;
-  document.getElementById('pnote').textContent=`Proyección basada en el promedio de ${n} mes${n>1?'es':''} registrado${n>1?'s':''}.`;
-  const am=MESES.map(mes=>{const reg=data.find(d=>d.mes===mes&&d.anio==='2026');if(reg){const c=calcMes(reg);return{i:reg.comisiones,c:c.caja,r:true}}return{i:aI,c:aI-aG-aS-aP,r:false}});
+    <div class="row"><span class="row-l">Ingresos netos reales</span><span class="row-v">${fmt(tIng)}</span></div>
+    <div class="row"><span class="row-l">Gastos deducibles reales</span><span class="row-v r">${tGastos>0?'-':''}${fmt(tGastos)}</span></div>
+    <div class="row"><span class="row-l">Sueldo empresarial real</span><span class="row-v r">${tSueldo>0?'-':''}${fmt(tSueldo)}</span></div>
+    <div class="row"><span class="row-l">Utilidad real acumulada</span><span class="row-v ${tUtil>=0?'':'r'}">${fmt(tUtil)}</span></div>
+    <div class="row"><span class="row-l">IDPC bruto estimado (25%)</span><span class="row-v a">${fmt(idpcBruto)}</span></div>
+    <div class="row"><span class="row-l">PPM ya pagados (descuento)</span><span class="row-v g">-${fmt(tPpm)}</span></div>
+    <div class="row tot"><span class="row-l">Saldo IDPC a pagar · abril 2027</span><span class="row-v a">${fmt(idpcNeto)}</span></div>`;
+
+  document.getElementById('pnote').textContent=`Basado en ${n} mes${n>1?'es':''} real${n>1?'es':''} registrado${n>1?'s':''}. El IDPC se calcula sobre utilidad real, sin proyecciones.`;
+
+  // Gráfico solo meses reales
+  const labels=data.map(d=>d.mes.substring(0,3)+' '+d.anio.substring(2));
   document.getElementById('plegend').innerHTML=`
-    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:rgba(35,131,226,.8)"></div>Real</div>
-    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:rgba(35,131,226,.2)"></div>Proyectado</div>`;
+    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:rgba(35,131,226,.8)"></div>Ingresos</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:rgba(196,123,0,.7)"></div>F29 pagado</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><div style="width:10px;height:10px;border-radius:2px;background:rgba(15,123,108,.8)"></div>Caja neta</div>`;
+
   if(PC)PC.destroy();
-  PC=new Chart(document.getElementById('proyChart'),{type:'bar',data:{labels:MESES.map(m=>m.substring(0,3)),datasets:[
-    {label:'Ingresos',data:am.map(m=>m.i),backgroundColor:am.map(m=>m.r?'rgba(35,131,226,.8)':'rgba(35,131,226,.2)'),borderRadius:4},
-    {label:'Caja',data:am.map(m=>m.c),backgroundColor:am.map(m=>m.r?'rgba(15,123,108,.8)':'rgba(15,123,108,.2)'),borderRadius:4}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:10},autoSkip:false,maxRotation:0}},y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:10},callback:v=>'$'+Math.round(v/1000)+'k'}}}}});
+  PC=new Chart(document.getElementById('proyChart'),{
+    data:{labels,datasets:[
+      {type:'bar',label:'Ingresos',data:data.map(d=>d.comisiones),backgroundColor:'rgba(35,131,226,.75)',borderRadius:4},
+      {type:'bar',label:'F29',data:data.map(d=>calcMes(d).f29),backgroundColor:'rgba(196,123,0,.7)',borderRadius:4},
+      {type:'line',label:'Caja neta',data:data.map(d=>calcMes(d).caja),borderColor:'#0f7b6c',backgroundColor:'rgba(15,123,108,.08)',fill:true,tension:.4,pointRadius:5,pointBackgroundColor:'#0f7b6c'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`}}},
+      scales:{
+        x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:11},autoSkip:false}},
+        y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:11},callback:v=>'$'+Math.round(v/1000)+'k'}}
+      }
+    }
+  });
 }
 
 renderResumen();
