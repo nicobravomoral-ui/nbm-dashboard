@@ -174,6 +174,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex
     <button class="nav-item" onclick="show('proyeccion',this)">
       <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Acumulado real
     </button>
+    <button class="nav-item" onclick="show('optimizacion',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>Optimización
+    </button>
   </div>
   <div class="sb-footer"><div class="regime-pill">ProPyme General · 14D N°3</div></div>
 </aside>
@@ -297,13 +300,69 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex
   </div>
 </div>
 
+
+<!-- OPTIMIZACIÓN -->
+<div id="panel-optimizacion" class="panel">
+  <div class="panel-title">Optimización tributaria</div>
+  <div class="panel-sub">Simula cuánto pagarte de sueldo y cuánto retirar según tus datos reales</div>
+
+  <div class="mgrid" id="opt-metrics"></div>
+
+  <div class="fb" style="margin-bottom:16px;">
+    <div class="fb-title"><div class="dot db"></div>Simulador — ajusta los sliders</div>
+    <div class="field">
+      <label>Sueldo mensual bruto $</label>
+      <input type="range" id="sl-sueldo" min="0" max="5000000" step="100000" value="0"
+        oninput="renderOptimizacion()" style="width:100%;margin:8px 0 4px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;color:var(--text3)">$0</span>
+        <span id="sl-sueldo-val" style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--blue)">$0</span>
+        <span style="font-size:11px;color:var(--text3)">$5.000.000</span>
+      </div>
+      <div class="hint">Gasto deducible empresa · reduce base IDPC · tú tributas en 2ª cat.</div>
+    </div>
+    <div class="field" style="margin-top:12px;">
+      <label>Retiro de utilidades anual $</label>
+      <input type="range" id="sl-retiro" min="0" max="50000000" step="500000" value="0"
+        oninput="renderOptimizacion()" style="width:100%;margin:8px 0 4px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;color:var(--text3)">$0</span>
+        <span id="sl-retiro-val" style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--blue)">$0</span>
+        <span style="font-size:11px;color:var(--text3)">$50.000.000</span>
+      </div>
+      <div class="hint">Tributa en Global Complementario · crédito del 25% IDPC</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="two-col">
+    <div class="card">
+      <div class="card-hdr"><div class="card-title">Empresa</div></div>
+      <div id="opt-empresa"></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><div class="card-title">Tú como persona</div></div>
+      <div id="opt-persona"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="card-hdr"><div class="card-title">Carga tributaria total según sueldo mensual</div></div>
+    <div class="chart-wrap"><canvas id="optChart"></canvas></div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="card-hdr"><div class="card-title">Recomendación</div></div>
+    <div id="opt-rec" style="padding:16px 18px;font-size:13px;line-height:1.7;color:var(--text2);"></div>
+  </div>
+</div>
+
 </main>
 
 <script>
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 let data=JSON.parse(localStorage.getItem('nbm_v3')||'[]');
 let gTemp=[];
-let MC=null,PC=null;
+let MC=null,PC=null,OC=null;
 
 const fmt=n=>(n<0?'-':'')+'$'+Math.abs(Math.round(n)).toLocaleString('es-CL');
 const key=(m,a)=>`${m}-${a}`;
@@ -334,6 +393,7 @@ function show(id,btn){
   if(id==='resumen')renderResumen();
   if(id==='historial')renderHistorial();
   if(id==='proyeccion')renderProyeccion();
+  if(id==='optimizacion')renderOptimizacion();
   if(id==='gastos')loadGastosTemp();
 }
 
@@ -568,6 +628,171 @@ function renderProyeccion(){
       scales:{
         x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:11},autoSkip:false}},
         y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:11},callback:v=>'$'+Math.round(v/1000)+'k'}}
+      }
+    }
+  });
+}
+
+
+// TABLA GC (tramos 2026 Chile, valores anuales aproximados en pesos)
+function calcGC(rentaAnual) {
+  // Tramos en UTA (~$816k mensual = ~$9.8M anual por UTM ~$68k × 12 × factor)
+  // Usamos valores aproximados 2026
+  const tramos = [
+    {hasta: 9360000,   tasa: 0},
+    {hasta: 20800000,  tasa: 0.04},
+    {hasta: 34700000,  tasa: 0.08},
+    {hasta: 48100000,  tasa: 0.135},
+    {hasta: 76800000,  tasa: 0.23},
+    {hasta: 104000000, tasa: 0.304},
+    {hasta: Infinity,  tasa: 0.35}
+  ];
+  let imp = 0, base = rentaAnual, prev = 0;
+  for (const t of tramos) {
+    const tope = Math.min(base, t.hasta - prev);
+    if (tope <= 0) break;
+    imp += tope * t.tasa;
+    prev = t.hasta;
+    if (base <= t.hasta) break;
+  }
+  return Math.max(0, imp);
+}
+
+function calcSegCat(sueldoMensual) {
+  // Segunda categoría usa los mismos tramos pero mensual
+  const tramos = [
+    {hasta: 780000,   tasa: 0},
+    {hasta: 1733333,  tasa: 0.04},
+    {hasta: 2891667,  tasa: 0.08},
+    {hasta: 4008333,  tasa: 0.135},
+    {hasta: 6400000,  tasa: 0.23},
+    {hasta: 8666667,  tasa: 0.304},
+    {hasta: Infinity, tasa: 0.35}
+  ];
+  let imp = 0, prev = 0;
+  for (const t of tramos) {
+    const tope = Math.min(sueldoMensual, t.hasta) - prev;
+    if (tope <= 0) break;
+    imp += tope * t.tasa;
+    prev = t.hasta;
+    if (sueldoMensual <= t.hasta) break;
+  }
+  return Math.max(0, imp);
+}
+
+function renderOptimizacion() {
+  const sueldoMes = parseInt(document.getElementById('sl-sueldo').value) || 0;
+  const retiroAnual = parseInt(document.getElementById('sl-retiro').value) || 0;
+  document.getElementById('sl-sueldo-val').textContent = '$' + sueldoMes.toLocaleString('es-CL');
+  document.getElementById('sl-retiro-val').textContent = '$' + retiroAnual.toLocaleString('es-CL');
+
+  if (!data.length) {
+    document.getElementById('opt-metrics').innerHTML = '<div style="grid-column:1/-1"><div class="empty"><div class="empty-icon">📊</div><p>Ingresa al menos un mes para usar el simulador.</p></div></div>';
+    return;
+  }
+
+  // Datos reales acumulados
+  const tIng = data.reduce((a,m) => a + m.comisiones, 0);
+  const tGastos = data.reduce((a,m) => a + calcMes(m).gN, 0);
+  const tPpm = data.reduce((a,m) => a + calcMes(m).ppmM, 0);
+  const n = data.length;
+
+  // Proyectar a 12 meses para el cálculo anual
+  const ingAnual = (tIng / n) * 12;
+  const gastosAnual = (tGastos / n) * 12;
+
+  // Con el sueldo del slider
+  const sueldoAnual = sueldoMes * 12;
+  const utilidad = Math.max(0, ingAnual - gastosAnual - sueldoAnual);
+  const idpcBruto = utilidad * 0.25;
+  const ppmAnual = (tPpm / n) * 12;
+  const idpcNeto = Math.max(0, idpcBruto - ppmAnual);
+
+  // Impuesto sueldo (segunda categoría mensual × 12)
+  const impSegCat = calcSegCat(sueldoMes) * 12;
+
+  // Global Complementario sobre retiro
+  // Base GC = utilidad empresa (con crédito IDPC)
+  const baseGC = utilidad;
+  const impGCBruto = calcGC(baseGC + retiroAnual > 0 ? baseGC : 0);
+  const creditoIDPC = idpcBruto;
+  const impGCNeto = Math.max(0, impGCBruto - creditoIDPC);
+  const devolucion = impGCBruto < creditoIDPC ? creditoIDPC - impGCBruto : 0;
+
+  // Carga total
+  const cargaTotal = idpcNeto + impSegCat + impGCNeto;
+  const cargaEfectiva = ingAnual > 0 ? (cargaTotal / ingAnual) * 100 : 0;
+
+  // Métricas
+  document.getElementById('opt-metrics').innerHTML = `
+    <div class="metric"><div class="m-label">Ingresos anuales est.</div><div class="m-val">${fmt(ingAnual)}</div><div class="m-sub">promedio × 12</div></div>
+    <div class="metric"><div class="m-label">Utilidad empresa</div><div class="m-val ${utilidad>=0?'':'r'}">${fmt(utilidad)}</div><div class="m-sub">base IDPC</div></div>
+    <div class="metric"><div class="m-label">Carga tributaria total</div><div class="m-val a">${fmt(cargaTotal)}</div><div class="m-sub">empresa + persona</div></div>
+    <div class="metric"><div class="m-label">Tasa efectiva</div><div class="m-val a">${cargaEfectiva.toFixed(1)}%</div><div class="m-sub">sobre ingresos</div></div>`;
+
+  // Empresa
+  document.getElementById('opt-empresa').innerHTML = `
+    <div class="row"><span class="row-l">Ingresos netos anuales</span><span class="row-v">${fmt(ingAnual)}</span></div>
+    <div class="row"><span class="row-l">Gastos operacionales</span><span class="row-v r">-${fmt(gastosAnual)}</span></div>
+    <div class="row"><span class="row-l">Sueldo empresarial</span><span class="row-v r">-${fmt(sueldoAnual)}</span></div>
+    <div class="row"><span class="row-l">Utilidad base IDPC</span><span class="row-v">${fmt(utilidad)}</span></div>
+    <div class="row"><span class="row-l">IDPC bruto (25%)</span><span class="row-v a">-${fmt(idpcBruto)}</span></div>
+    <div class="row"><span class="row-l">PPM descontados</span><span class="row-v g">-${fmt(ppmAnual)}</span></div>
+    <div class="row tot"><span class="row-l">IDPC a pagar abril</span><span class="row-v a">${fmt(idpcNeto)}</span></div>`;
+
+  // Persona
+  document.getElementById('opt-persona').innerHTML = `
+    <div class="row"><span class="row-l">Sueldo bruto anual</span><span class="row-v">${fmt(sueldoAnual)}</span></div>
+    <div class="row"><span class="row-l">Imp. 2ª cat. (est.)</span><span class="row-v a">-${fmt(impSegCat)}</span></div>
+    <div class="row"><span class="row-l">Retiro de utilidades</span><span class="row-v">${fmt(retiroAnual)}</span></div>
+    <div class="row"><span class="row-l">Imp. GC bruto</span><span class="row-v a">-${fmt(impGCBruto)}</span></div>
+    <div class="row"><span class="row-l">Crédito IDPC</span><span class="row-v g">+${fmt(creditoIDPC)}</span></div>
+    <div class="row tot"><span class="row-l">${devolucion > 0 ? 'Devolución SII' : 'Imp. GC a pagar'}</span><span class="row-v ${devolucion > 0 ? 'g' : 'a'}">${devolucion > 0 ? '+' : '-'}${fmt(devolucion > 0 ? devolucion : impGCNeto)}</span></div>`;
+
+  // Recomendación
+  let rec = '';
+  const tasaEmp = 25;
+  const tasaPersona = ingAnual > 0 ? (impSegCat / sueldoAnual) * 100 : 0;
+  if (sueldoMes === 0) {
+    rec = `⚠️ Sin sueldo empresarial, toda la utilidad queda en la empresa y paga 25% de IDPC. Considera pagarte un sueldo mensual — reduce la base del IDPC y recibes plata mensual con muy poco impuesto en tramos bajos.`;
+  } else if (sueldoAnual > ingAnual * 0.6) {
+    rec = `⚠️ El sueldo representa más del 60% de tus ingresos. Si la utilidad cae a cero o negativa, no habrá base para el IDPC pero tampoco para retiros futuros. Considera moderarlo.`;
+  } else if (utilidad > 0 && idpcNeto > 0) {
+    const sueldoOptimo = Math.round((ingAnual - gastosAnual) * 0.4 / 12 / 100000) * 100000;
+    rec = `✅ Con un sueldo de ${fmt(sueldoMes)}/mes, tu utilidad es ${fmt(utilidad)} y pagas ${fmt(idpcNeto)} de IDPC en abril. ${devolucion > 0 ? `Además el SII te devuelve ${fmt(devolucion)} por exceso de IDPC sobre tu tasa personal.` : ''} Un sueldo óptimo estimado para tu nivel de ingresos sería alrededor de ${fmt(sueldoOptimo)}/mes — así equilibras flujo mensual e IDPC.`;
+  } else {
+    rec = `✅ Con este sueldo la utilidad de la empresa es ${fmt(utilidad)}. ${utilidad <= 0 ? 'No hay IDPC a pagar.' : `IDPC estimado: ${fmt(idpcNeto)}.`}`;
+  }
+  document.getElementById('opt-rec').innerHTML = rec;
+
+  // Gráfico: carga total vs sueldo
+  const sueldos = [0, 500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000];
+  const cargas = sueldos.map(s => {
+    const sa = s * 12;
+    const u = Math.max(0, ingAnual - gastosAnual - sa);
+    const idpc = Math.max(0, u * 0.25 - ppmAnual);
+    const sc = calcSegCat(s) * 12;
+    return Math.round(idpc + sc);
+  });
+
+  if (OC) OC.destroy();
+  OC = new Chart(document.getElementById('optChart'), {
+    type: 'bar',
+    data: {
+      labels: sueldos.map(s => '$' + Math.round(s/1000) + 'k'),
+      datasets: [{
+        label: 'Carga total',
+        data: cargas,
+        backgroundColor: sueldos.map(s => s === sueldoMes ? 'rgba(35,131,226,.9)' : 'rgba(35,131,226,.3)'),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `Carga: ${fmt(ctx.raw)}` } } },
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#999', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#999', font: { size: 11 }, callback: v => '$' + Math.round(v/1000) + 'k' } }
       }
     }
   });
