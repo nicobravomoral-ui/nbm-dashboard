@@ -447,7 +447,8 @@ let data=JSON.parse(localStorage.getItem('nbm_v3')||'[]');
 let gTemp=[];
 let MC=null,PC=null,OC=null;
 
-const fmt=n=>(n<0?'-':'')+'$'+Math.abs(Math.round(n)).toLocaleString('es-CL');
+const _nf=new Intl.NumberFormat('es-CL',{useGrouping:true,maximumFractionDigits:0});
+const fmt=n=>(n<0?'-':'')+'$'+_nf.format(Math.abs(Math.round(n)));
 const key=(m,a)=>`${m}-${a}`;
 const getReg=(m,a)=>data.find(d=>d.key===key(m,a))||null;
 const calcMes=m=>{
