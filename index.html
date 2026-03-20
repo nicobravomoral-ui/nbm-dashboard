@@ -304,7 +304,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex
 <!-- OPTIMIZACIÓN -->
 <div id="panel-optimizacion" class="panel">
   <div class="panel-title">Optimización tributaria</div>
-  <div class="panel-sub">Simula cuánto pagarte de sueldo y cuánto retirar según tus datos reales</div>
+  <div class="panel-sub" id="opt-sub">Basado en datos reales acumulados · se ajusta con cada mes que ingresas</div>
 
   <!-- KPIs en vivo -->
   <div class="mgrid" id="opt-metrics" style="margin-bottom:16px;"></div>
@@ -692,17 +692,24 @@ function renderOptimizacion() {
     return;
   }
 
-  // Datos reales → proyectar a 12 meses
+  // Datos reales acumulados — se ajusta según meses ingresados
   const n = data.length;
   const tIng = data.reduce((a,m) => a+m.comisiones, 0);
   const tGastos = data.reduce((a,m) => a+calcMes(m).gN, 0);
   const tPpm = data.reduce((a,m) => a+calcMes(m).ppmM, 0);
+
+  // Sueldo simulado × meses reales ingresados (no × 12)
+  const sueldoAcum = sueldoMes * n;
+  // Para IDPC y GC necesitamos base anual — extrapolamos solo el ingreso/gasto al año
+  // pero el sueldo lo dejamos acumulado real para mostrar utilidad real
   const ingAnual = (tIng/n)*12;
   const gastosAnual = (tGastos/n)*12;
   const ppmAnual = (tPpm/n)*12;
-
-  // Cálculos con sliders
   const sueldoAnual = sueldoMes * 12;
+
+  // Utilidad REAL acumulada (con sueldo simulado × meses reales)
+  const utilidadReal = Math.max(0, tIng - tGastos - sueldoAcum);
+  // Utilidad proyectada anual (para estimar IDPC anual)
   const utilidad = Math.max(0, ingAnual - gastosAnual - sueldoAnual);
   const idpcBruto = utilidad * 0.25;
   const idpcNeto = Math.max(0, idpcBruto - ppmAnual);
@@ -721,22 +728,26 @@ function renderOptimizacion() {
   const cargaEfectiva = ingAnual > 0 ? (cargaTotal/ingAnual)*100 : 0;
   const plataReal = ingAnual - cargaTotal;
 
-  // KPIs
+  // KPIs — utilidad real acumulada + proyección anual
+  const idpcSobreReal = Math.max(0, utilidadReal * 0.25 - tPpm);
   document.getElementById('opt-metrics').innerHTML = `
-    <div class="metric"><div class="m-label">IDPC empresa</div><div class="m-val a">${fmt(idpcNeto)}</div><div class="m-sub">a pagar en abril</div></div>
-    <div class="metric"><div class="m-label">Imp. 2ª cat.</div><div class="m-val a">${fmt(impSegCat)}</div><div class="m-sub">sobre sueldo anual</div></div>
-    <div class="metric"><div class="m-label">${devolucion>0?'Devolución SII':'Global Comp.'}</div><div class="m-val ${devolucion>0?'g':'a'}">${devolucion>0?'+':''}${fmt(devolucion>0?devolucion:impGCNeto)}</div><div class="m-sub">${devolucion>0?'te devuelven':'a pagar en abril'}</div></div>
-    <div class="metric"><div class="m-label">Tasa efectiva</div><div class="m-val ${cargaEfectiva>25?'r':'g'}">${cargaEfectiva.toFixed(1)}%</div><div class="m-sub">carga total / ingresos</div></div>`;
+    <div class="metric"><div class="m-label">Utilidad real acum.</div><div class="m-val ${utilidadReal>=0?'g':'r'}">${fmt(utilidadReal)}</div><div class="m-sub">${n} mes${n>1?'es':''} · con sueldo simulado</div></div>
+    <div class="metric"><div class="m-label">IDPC sobre real</div><div class="m-val a">${fmt(idpcSobreReal)}</div><div class="m-sub">si cerraras hoy</div></div>
+    <div class="metric"><div class="m-label">IDPC proyectado</div><div class="m-val a">${fmt(idpcNeto)}</div><div class="m-sub">estimado 12 meses</div></div>
+    <div class="metric"><div class="m-label">Tasa efectiva</div><div class="m-val ${cargaEfectiva>25?'r':'g'}">${cargaEfectiva.toFixed(1)}%</div><div class="m-sub">carga anual / ingresos</div></div>`;
 
-  // Detalle empresa
+  // Detalle empresa — real acumulado + proyección
   document.getElementById('opt-empresa').innerHTML = `
-    <div class="row"><span class="row-l">Ingresos netos anuales</span><span class="row-v">${fmt(ingAnual)}</span></div>
-    <div class="row"><span class="row-l">Gastos operacionales</span><span class="row-v r">-${fmt(gastosAnual)}</span></div>
-    <div class="row"><span class="row-l">Sueldo empresarial</span><span class="row-v r">-${fmt(sueldoAnual)}</span></div>
-    <div class="row"><span class="row-l">Utilidad base IDPC</span><span class="row-v">${fmt(utilidad)}</span></div>
+    <div class="row" style="background:var(--bg2)"><span class="row-l" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Real · ${n} mes${n>1?'es':''}</span><span class="row-v" style="font-size:11px;color:var(--text3)">acumulado</span></div>
+    <div class="row"><span class="row-l">Ingresos reales</span><span class="row-v g">${fmt(tIng)}</span></div>
+    <div class="row"><span class="row-l">Gastos reales</span><span class="row-v r">-${fmt(tGastos)}</span></div>
+    <div class="row"><span class="row-l">Sueldo simulado (×${n})</span><span class="row-v r">-${fmt(sueldoAcum)}</span></div>
+    <div class="row"><span class="row-l">Utilidad real acum.</span><span class="row-v ${utilidadReal>=0?'g':'r'}">${fmt(utilidadReal)}</span></div>
+    <div class="row" style="background:var(--bg2);margin-top:4px"><span class="row-l" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Proyección 12 meses</span><span class="row-v" style="font-size:11px;color:var(--text3)">estimado</span></div>
+    <div class="row"><span class="row-l">Utilidad proyectada</span><span class="row-v">${fmt(utilidad)}</span></div>
     <div class="row"><span class="row-l">IDPC bruto (25%)</span><span class="row-v a">-${fmt(idpcBruto)}</span></div>
     <div class="row"><span class="row-l">PPM descontados</span><span class="row-v g">-${fmt(ppmAnual)}</span></div>
-    <div class="row tot"><span class="row-l">IDPC neto a pagar</span><span class="row-v a">${fmt(idpcNeto)}</span></div>`;
+    <div class="row tot"><span class="row-l">IDPC estimado abril</span><span class="row-v a">${fmt(idpcNeto)}</span></div>`;
 
   // Detalle persona
   document.getElementById('opt-persona').innerHTML = `
