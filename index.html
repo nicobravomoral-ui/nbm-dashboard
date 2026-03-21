@@ -443,7 +443,9 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
 
 <script>
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-let data=JSON.parse(localStorage.getItem('nbm_v3')||'[]');
+function _lsGet(){try{return JSON.parse(localStorage.getItem('nbm_v3')||'[]')}catch(e){return[]}}
+function _lsSet(v){try{localStorage.setItem('nbm_v3',JSON.stringify(v))}catch(e){}}
+let data=_lsGet();
 let gTemp=[];
 let MC=null,PC=null,OC=null;
 
@@ -462,7 +464,7 @@ const calcMes=m=>{
   const caja=m.comisiones-gN-(m.sueldo||0)-(m.retiro||0)-ppmM;
   return{ivaD,ivaC,ivaP,ppmM,util,f29,caja,gN};
 };
-const save=()=>localStorage.setItem('nbm_v3',JSON.stringify(data));
+const save=()=>_lsSet(data);
 const sortD=()=>data.sort((a,b)=>{const ya=+a.anio,yb=+b.anio;return ya!==yb?ya-yb:MESES.indexOf(a.mes)-MESES.indexOf(b.mes)});
 
 function openSb(){document.querySelector('.sidebar').classList.add('open');document.getElementById('ov').classList.add('open')}
@@ -491,8 +493,8 @@ function guardarIngresos(){
   if(idx>=0)data[idx]=reg;else data.push(reg);
   sortD();save();renderResumen();
   const b=document.getElementById('btn-ing');
-  b.textContent='✓ Guardado';b.style.background='#0f7b6c';
-  setTimeout(()=>{b.textContent='Guardar ingresos';b.style.background=''},2000);
+  b.innerHTML='<span class="material-symbols-outlined text-base">check</span>Guardado';b.style.background='#0f7b6c';
+  setTimeout(()=>{b.innerHTML='<span class="material-symbols-outlined text-base">save</span>Guardar ingresos';b.style.background=''},2000);
 }
 
 // GASTOS TEMP
@@ -523,8 +525,8 @@ function guardarGastos(){
   else data.push({key:k,mes:m,anio:a,comisiones:0,sueldo:0,retiro:0,tasaIva:19,tasaPpm:0.2,gastos:[...gTemp]});
   sortD();save();renderResumen();
   const b=document.getElementById('btn-gas');
-  b.textContent='✓ Guardado';b.style.background='#0f7b6c';
-  setTimeout(()=>{b.textContent='Guardar gastos';b.style.background=''},2000);
+  b.innerHTML='<span class="material-symbols-outlined text-base">check</span>Guardado';b.style.background='#0f7b6c';
+  setTimeout(()=>{b.innerHTML='<span class="material-symbols-outlined text-base">save</span>Guardar gastos';b.style.background=''},2000);
 }
 
 // HISTORIAL
@@ -608,7 +610,7 @@ function renderResumen(){
   const tF=data.reduce((a,m)=>a+calcMes(m).f29,0);
   const tP=data.reduce((a,m)=>a+calcMes(m).ppmM,0);
   const tC=data.reduce((a,m)=>a+calcMes(m).caja,0);
-  document.getElementById('rsub').textContent=`Último mes: ${ul.mes} ${ul.anio}`;
+  const _rsub=document.getElementById('rsub');if(_rsub)_rsub.textContent=`Último mes: ${ul.mes} ${ul.anio}`;
   document.getElementById('mtop').innerHTML=`
     <div class="bg-white rounded-xl p-5 border border-slate-100 hover:border-slate-200 transition-all">
       <div class="flex justify-between items-start mb-3">
