@@ -95,6 +95,24 @@ body { font-family: 'Inter', sans-serif; background: #f7f9fb; }
 /* RANGE SLIDER */
 input[type=range] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 4px; background: #e6e8ea; outline: none; }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #131b2e; cursor: pointer; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+/* BTN */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+.btn-sm { padding: 7px 14px; font-size: 12px; }
+.btn-p { background: #131b2e; color: white; }
+.btn-p:hover { opacity: .88; }
+.btn-d { background: #fdf0f0; color: #ba1a1a; border: 1px solid #f5c6c6; }
+.btn-d:hover { background: #ba1a1a; color: white; }
+.btn-g { background: #1a1a1a; color: white; }
+.btn-g:hover { background: #000; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+/* HISTORIAL SECTION TITLE */
+.hs-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #76777d; margin: 14px 0 8px; }
+/* METRICS */
+.metric { background: white; border-radius: 12px; padding: 20px; border: 1px solid #e6e8ea; }
+.m-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #76777d; margin-bottom: 6px; }
+.m-val { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; color: #191c1e; }
+.m-val.g { color: #0f7b6c; } .m-val.a { color: #c47b00; } .m-val.r { color: #ba1a1a; }
+.m-sub { font-size: 11px; color: #76777d; margin-top: 4px; }
 /* MOBILE */
 @media(max-width:768px) {
   .sidebar { transform: translateX(-100%); transition: transform .25s; }
@@ -250,16 +268,16 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
             </div>
           </div>
           <div class="field"><label>Comisiones netas (sin IVA) $</label>
-            <input type="number" id="ic" placeholder="0" min="0" inputmode="numeric">
+            <input type="text" id="ic" placeholder="0" inputmode="numeric" oninput="autoFmtInt(this)">
             <div class="hint">Monto neto de la factura sin IVA</div>
           </div>
           <div class="fr2">
             <div class="field"><label>Sueldo empresarial $</label>
-              <input type="number" id="is" placeholder="0" min="0" inputmode="numeric">
+              <input type="text" id="is" placeholder="0" inputmode="numeric" oninput="autoFmtInt(this)">
               <div class="hint">Gasto empresa · 2ª cat.</div>
             </div>
             <div class="field"><label>Retiro de utilidades $</label>
-              <input type="number" id="ir" placeholder="0" min="0" inputmode="numeric">
+              <input type="text" id="ir" placeholder="0" inputmode="numeric" oninput="autoFmtInt(this)">
               <div class="hint">Global Complementario</div>
             </div>
           </div>
@@ -270,8 +288,8 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
             <span class="text-xs font-bold uppercase tracking-wider text-slate-500 font-headline">Parámetros tributarios</span>
           </div>
           <div class="fr2">
-            <div class="field"><label>IVA %</label><input type="number" id="iv" value="19" min="0" inputmode="numeric"></div>
-            <div class="field"><label>PPM %</label><input type="number" id="ip" value="0.2" step="0.01" min="0" inputmode="decimal"><div class="hint">SII ajusta en junio</div></div>
+            <div class="field"><label>IVA %</label><input type="text" id="iv" value="19" inputmode="decimal" oninput="autoFmtDec(this)"></div>
+            <div class="field"><label>PPM %</label><input type="text" id="ip" value="0,2" inputmode="decimal" oninput="autoFmtDec(this)"><div class="hint">SII ajusta en junio</div></div>
           </div>
         </div>
         <div class="flex gap-3">
@@ -316,7 +334,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
           <div id="glist"></div>
           <div class="add-row">
             <div class="field"><input type="text" id="gdesc" placeholder="Descripción (ej: arriendo oficina)"></div>
-            <div class="field"><input type="number" id="gmonto" placeholder="Monto neto $" min="0" inputmode="numeric"></div>
+            <div class="field"><input type="text" id="gmonto" placeholder="Monto neto $" inputmode="numeric" oninput="autoFmtInt(this)"></div>
             <button onclick="addGasto()" class="px-3 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-black transition-colors whitespace-nowrap">+ Agregar</button>
           </div>
         </div>
@@ -451,6 +469,24 @@ let MC=null,PC=null,OC=null;
 
 const _nf=new Intl.NumberFormat('es-CL',{useGrouping:true,maximumFractionDigits:0});
 const fmt=n=>(n<0?'-':'')+'$'+_nf.format(Math.abs(Math.round(n)));
+const fmtN=n=>n?Math.round(n).toLocaleString('es-CL'):'0';
+// Parsers para inputs formateados
+function pIntEl(el){if(!el)return 0;return parseInt((el.value||'').replace(/\./g,'').replace(',','.'))||0;}
+function pInt(id){return pIntEl(document.getElementById(id));}
+function pFloat(id){const el=document.getElementById(id);if(!el)return 0;return parseFloat((el.value||'').replace(/\./g,'').replace(',','.'))||0;}
+// Auto-formato mientras se escribe
+function autoFmtInt(el){
+  const pos=el.selectionStart,old=el.value.length;
+  const raw=el.value.replace(/\D/g,'');
+  if(!raw){el.value='';return;}
+  el.value=parseInt(raw).toLocaleString('es-CL');
+  const diff=el.value.length-old;
+  try{el.setSelectionRange(pos+diff,pos+diff)}catch(e){}
+}
+function autoFmtDec(el){
+  // Permite solo dígitos y una coma como separador decimal
+  el.value=el.value.replace(/[^0-9,]/g,'').replace(/(,.*),/g,'$1');
+}
 const key=(m,a)=>`${m}-${a}`;
 const getReg=(m,a)=>data.find(d=>d.key===key(m,a))||null;
 const calcMes=m=>{
@@ -486,10 +522,10 @@ function show(id,btn){
 // INGRESOS
 function guardarIngresos(){
   const m=document.getElementById('im').value,a=document.getElementById('ia').value;
-  const com=parseFloat(document.getElementById('ic').value)||0;
+  const com=pInt('ic');
   if(!com){alert('Ingresa las comisiones del mes');return}
   const k=key(m,a),idx=data.findIndex(d=>d.key===k);
-  const reg={key:k,mes:m,anio:a,comisiones:com,sueldo:parseFloat(document.getElementById('is').value)||0,retiro:parseFloat(document.getElementById('ir').value)||0,tasaIva:parseFloat(document.getElementById('iv').value)||19,tasaPpm:parseFloat(document.getElementById('ip').value)||0.2,gastos:idx>=0?data[idx].gastos:[]};
+  const reg={key:k,mes:m,anio:a,comisiones:com,sueldo:pInt('is'),retiro:pInt('ir'),tasaIva:pFloat('iv')||19,tasaPpm:pFloat('ip')||0.2,gastos:idx>=0?data[idx].gastos:[]};
   if(idx>=0)data[idx]=reg;else data.push(reg);
   sortD();save();renderResumen();
   const b=document.getElementById('btn-ing');
@@ -506,7 +542,7 @@ function loadGastosTemp(){
   document.getElementById('gstatus').textContent=reg?`Editando gastos de ${m} ${a}`:`${m} ${a} sin ingresos aún — los gastos se guardarán igual.`;
 }
 function addGasto(){
-  const d=document.getElementById('gdesc').value.trim(),mo=parseFloat(document.getElementById('gmonto').value)||0;
+  const d=document.getElementById('gdesc').value.trim(),mo=pInt('gmonto');
   if(!d||!mo)return;
   gTemp.push({desc:d,monto:mo});
   document.getElementById('gdesc').value='';document.getElementById('gmonto').value='';
@@ -547,18 +583,18 @@ function renderHistorial(){
       <div class="hm-body" id="hb-${m.key}">
         <div class="hs-title">Ingresos y parámetros</div>
         <div class="fr2" style="margin-bottom:12px">
-          <div class="field"><label>Comisiones netas $</label><input type="number" id="hc-${m.key}" value="${m.comisiones}" min="0" inputmode="numeric"></div>
-          <div class="field"><label>Sueldo empresarial $</label><input type="number" id="hs-${m.key}" value="${m.sueldo||0}" min="0" inputmode="numeric"></div>
+          <div class="field"><label>Comisiones netas $</label><input type="text" id="hc-${m.key}" value="${fmtN(m.comisiones)}" inputmode="numeric" oninput="autoFmtInt(this)"></div>
+          <div class="field"><label>Sueldo empresarial $</label><input type="text" id="hs-${m.key}" value="${fmtN(m.sueldo||0)}" inputmode="numeric" oninput="autoFmtInt(this)"></div>
         </div>
         <div class="fr2" style="margin-bottom:4px">
-          <div class="field"><label>Retiro $</label><input type="number" id="hr-${m.key}" value="${m.retiro||0}" min="0" inputmode="numeric"></div>
-          <div class="field"><label>PPM %</label><input type="number" id="hp-${m.key}" value="${m.tasaPpm||0.2}" step="0.01" min="0" inputmode="decimal"></div>
+          <div class="field"><label>Retiro $</label><input type="text" id="hr-${m.key}" value="${fmtN(m.retiro||0)}" inputmode="numeric" oninput="autoFmtInt(this)"></div>
+          <div class="field"><label>PPM %</label><input type="text" id="hp-${m.key}" value="${(m.tasaPpm||0.2).toString().replace('.',',')}" inputmode="decimal" oninput="autoFmtDec(this)"></div>
         </div>
         <div class="hs-title">Gastos operacionales</div>
         <div id="hg-${m.key}"></div>
         <div class="add-row" style="margin-top:8px">
           <div class="field"><input type="text" id="hgd-${m.key}" placeholder="Descripción"></div>
-          <div class="field"><input type="number" id="hgm-${m.key}" placeholder="Monto $" min="0" inputmode="numeric" style="width:130px"></div>
+          <div class="field"><input type="text" id="hgm-${m.key}" placeholder="Monto $" inputmode="numeric" oninput="autoFmtInt(this)" style="width:130px"></div>
           <button class="btn btn-g btn-sm" onclick="hAddGasto('${m.key}')">+ Agregar</button>
         </div>
         <div class="btn-row" style="margin-top:16px">
@@ -577,7 +613,7 @@ function renderHG(k,gs){
 }
 function hDelGasto(k,i){const idx=data.findIndex(d=>d.key===k);if(idx<0)return;data[idx].gastos.splice(i,1);renderHG(k,data[idx].gastos);save()}
 function hAddGasto(k){
-  const d=document.getElementById('hgd-'+k).value.trim(),mo=parseFloat(document.getElementById('hgm-'+k).value)||0;
+  const d=document.getElementById('hgd-'+k).value.trim(),mo=pIntEl(document.getElementById('hgm-'+k));
   if(!d||!mo)return;
   const idx=data.findIndex(d=>d.key===k);if(idx<0)return;
   data[idx].gastos.push({desc:d,monto:mo});
@@ -586,10 +622,10 @@ function hAddGasto(k){
 }
 function hGuardar(k){
   const idx=data.findIndex(d=>d.key===k);if(idx<0)return;
-  data[idx].comisiones=parseFloat(document.getElementById('hc-'+k).value)||0;
-  data[idx].sueldo=parseFloat(document.getElementById('hs-'+k).value)||0;
-  data[idx].retiro=parseFloat(document.getElementById('hr-'+k).value)||0;
-  data[idx].tasaPpm=parseFloat(document.getElementById('hp-'+k).value)||0.2;
+  data[idx].comisiones=pInt('hc-'+k);
+  data[idx].sueldo=pInt('hs-'+k);
+  data[idx].retiro=pInt('hr-'+k);
+  data[idx].tasaPpm=pFloat('hp-'+k)||0.2;
   save();renderResumen();renderHistorial();
   document.getElementById('hb-'+k).classList.add('open');
 }
