@@ -679,10 +679,17 @@ function autoFmtDec(el){
 function updateSyncStatus(msg){const el=document.getElementById('sync-status');if(el)el.textContent=msg;}
 async function syncToSheets(){
   if(!SYNC_URL)return;
+  if(!data.length)return; // Nunca sobreescribir Sheets con datos vacíos
   try{
     await fetch(SYNC_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({meses:data})});
     updateSyncStatus('✓ Sincronizado '+new Date().toLocaleTimeString('es-CL'));
   }catch(e){updateSyncStatus('Pendiente (sin conexión)');}
+}
+function syncNow(){
+  if(!SYNC_URL){alert('Configura la URL del Web App primero');return;}
+  if(!data.length){alert('Sin datos locales — usa "Restaurar desde backup" para traer datos desde Sheets.');return;}
+  updateSyncStatus('Sincronizando...');
+  syncToSheets();
 }
 function syncNow(){
   if(!SYNC_URL){alert('Configura la URL del Web App primero');return;}
