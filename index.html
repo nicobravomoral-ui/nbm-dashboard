@@ -166,6 +166,14 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
     <button class="nav-item" onclick="show('optimizacion',this)">
       <span class="material-symbols-outlined">tune</span>Optimización
     </button>
+    <div class="px-4 mt-4 mb-1"><p class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Ayuda</p></div>
+    <button class="nav-item" onclick="show('guia',this)">
+      <span class="material-symbols-outlined">help</span>Guía tributaria
+    </button>
+    <div class="px-4 mt-4 mb-1"><p class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Sistema</p></div>
+    <button class="nav-item" onclick="show('config',this)">
+      <span class="material-symbols-outlined">settings</span>Configuración
+    </button>
   </nav>
 
   <div class="px-4 mt-auto pt-4 border-t border-slate-100">
@@ -211,6 +219,15 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
 
     <!-- RESUMEN -->
     <div id="panel-resumen" class="panel active">
+      <!-- ALERTA F29 -->
+      <div id="f29-alerta" style="display:none" class="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-5 py-4 mb-5">
+        <span class="material-symbols-outlined text-red-500" style="font-size:20px;flex-shrink:0">alarm</span>
+        <div class="flex-1">
+          <p id="f29-alerta-msg" class="text-sm font-bold text-red-700"></p>
+          <p id="f29-alerta-sub" class="text-xs text-red-500 mt-0.5"></p>
+        </div>
+        <button onclick="marcarF29PagadoAlerta()" class="text-xs font-bold bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap flex-shrink-0">Marcar pagado</button>
+      </div>
       <!-- KPI GRID -->
       <div class="grid grid-cols-2 four-col md:grid-cols-4 gap-4 mb-6" id="mtop">
         <div class="col-span-4 bg-white rounded-xl p-8 text-center border border-slate-100">
@@ -244,6 +261,15 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
             <div id="flujo" class="space-y-1"></div>
           </div>
         </div>
+      </div>
+      <!-- PROVISIÓN IDPC -->
+      <div id="idpc-provision" class="bg-primary-c text-white rounded-xl p-6 relative overflow-hidden mb-6" style="display:none">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="material-symbols-outlined text-teal-300" style="font-variation-settings:'FILL' 1;font-size:18px">savings</span>
+          <h3 class="font-headline text-sm font-bold">Provisión IDPC</h3>
+        </div>
+        <div id="idpc-prov-content" class="text-sm text-slate-300 leading-relaxed"></div>
+        <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-white/5 rounded-full"></div>
       </div>
     </div>
 
@@ -386,6 +412,11 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
         <h2 class="font-headline text-2xl font-bold text-slate-900">Optimización tributaria</h2>
         <p class="text-sm text-slate-400 mt-1">Basado en datos reales acumulados · se ajusta con cada mes que ingresas</p>
       </div>
+      <!-- Confiabilidad proyección -->
+      <div id="opt-confiabilidad" style="display:none" class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 mb-4">
+        <span class="material-symbols-outlined text-amber-500" style="font-size:18px;flex-shrink:0">warning</span>
+        <p id="opt-conf-msg" class="text-xs text-amber-700 font-medium leading-relaxed"></p>
+      </div>
       <!-- KPIs -->
       <div class="grid grid-cols-2 four-col md:grid-cols-4 gap-4 mb-6" id="opt-metrics"></div>
       <!-- SLIDERS -->
@@ -455,6 +486,157 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
       </div>
     </div>
 
+    <!-- CONFIGURACIÓN -->
+    <div id="panel-config" class="panel">
+      <div class="mb-6">
+        <h2 class="font-headline text-2xl font-bold text-slate-900">Configuración</h2>
+        <p class="text-sm text-slate-400 mt-1">Backup automático y parámetros del sistema</p>
+      </div>
+      <div class="max-w-lg space-y-4">
+        <!-- GOOGLE SHEETS SYNC -->
+        <div class="bg-white rounded-xl p-6 border border-slate-100">
+          <div class="flex items-center gap-2 mb-5">
+            <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 font-headline">Google Sheets — Backup automático</span>
+          </div>
+          <div class="field"><label>URL del Web App (Apps Script)</label>
+            <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/.../exec">
+            <div class="hint">Cada vez que guardes datos, se sincronizan automáticamente a tu Google Sheet</div>
+          </div>
+          <div class="flex flex-wrap gap-3 mt-4">
+            <button onclick="saveConfig()" class="btn btn-p btn-sm">Guardar URL</button>
+            <button onclick="syncNow()" class="btn btn-g btn-sm">Sincronizar ahora</button>
+            <button onclick="restoreFromSheets()" class="btn btn-sm" style="background:#eef4fd;color:#2383e2;border:1px solid #c6d8f0">Restaurar desde backup</button>
+          </div>
+          <div id="sync-status" class="text-xs text-slate-400 mt-3"></div>
+        </div>
+        <!-- COTIZACIONES PREVISIONALES -->
+        <div class="bg-white rounded-xl p-6 border border-slate-100">
+          <div class="flex items-center gap-2 mb-5">
+            <div class="w-2 h-2 rounded-full bg-amber-500"></div>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 font-headline">Cotizaciones previsionales</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-4">Estas tasas se descuentan del sueldo bruto antes de calcular el impuesto de 2ª categoría. Afecta la sección de Optimización.</p>
+          <div class="fr2">
+            <div class="field"><label>AFP %</label>
+              <input type="text" id="cfg-afp" value="12,5" inputmode="decimal" oninput="autoFmtDec(this)">
+              <div class="hint">Obligatoria + comisión AFP</div>
+            </div>
+            <div class="field"><label>Salud %</label>
+              <input type="text" id="cfg-salud" value="7" inputmode="decimal" oninput="autoFmtDec(this)">
+              <div class="hint">Fonasa o Isapre</div>
+            </div>
+          </div>
+          <div class="fr2" style="margin-top:8px">
+            <div class="field"><label>Seguro cesantía %</label>
+              <input type="text" id="cfg-cesantia" value="0,6" inputmode="decimal" oninput="autoFmtDec(this)">
+              <div class="hint">Aporte trabajador</div>
+            </div>
+            <div class="field"><label>Total cotizaciones %</label>
+              <input type="text" id="cfg-cotiz-total" value="20,1" readonly style="background:#f2f4f6;font-weight:600">
+              <div class="hint">Se descuenta del bruto para 2ª cat.</div>
+            </div>
+          </div>
+          <button onclick="saveCotiz()" class="btn btn-p btn-sm" style="margin-top:12px">Guardar parámetros</button>
+          <div id="cotiz-status" class="text-xs text-slate-400 mt-3"></div>
+        </div>
+        <!-- INSTRUCCIONES -->
+        <div class="bg-slate-50 rounded-xl p-6 border border-slate-200">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined text-slate-400" style="font-size:18px">help</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 font-headline">Cómo configurar Google Sheets</span>
+          </div>
+          <ol class="text-xs text-slate-500 leading-relaxed space-y-1.5" style="list-style:decimal inside">
+            <li>Crea un Google Sheet nuevo</li>
+            <li>Ve a <strong>Extensiones → Apps Script</strong></li>
+            <li>Borra el código existente y pega el script que te proporcioné</li>
+            <li>Click en <strong>Implementar → Nueva implementación</strong></li>
+            <li>Tipo: <strong>Aplicación web</strong> · Ejecutar como: Yo · Acceso: Cualquier persona</li>
+            <li>Copia la URL y pégala arriba</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- GUÍA TRIBUTARIA -->
+    <div id="panel-guia" class="panel">
+      <div class="mb-6">
+        <h2 class="font-headline text-2xl font-bold text-slate-900">Guía tributaria</h2>
+        <p class="text-sm text-slate-400 mt-1">Qué es cada concepto y cómo te afecta</p>
+      </div>
+      <div class="max-w-2xl space-y-4">
+
+        <div class="bg-white rounded-xl p-6 border border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-amber-600" style="font-size:18px">receipt_long</span></div>
+            <h3 class="font-headline text-base font-bold text-slate-900">F29 — Formulario mensual SII</h3>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">El formulario que presentas al SII cada mes. Incluye el <strong>IVA neto</strong> que debes pagar más el <strong>PPM</strong>. Vence el <strong>día 12 de cada mes</strong>, cubriendo los ingresos y gastos del mes anterior.</p>
+          <div class="mt-3 p-3 bg-amber-50 rounded-lg text-xs text-amber-700 font-medium">Ejemplo: el F29 de enero lo presentas y pagas antes del 12 de febrero.</div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 border border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-blue-600" style="font-size:18px">percent</span></div>
+            <h3 class="font-headline text-base font-bold text-slate-900">IVA — Impuesto al Valor Agregado</h3>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">Actualmente <strong>19%</strong>. Cuando emites una factura cobras IVA a tu cliente (<strong>IVA débito</strong>). Cuando compras con factura a nombre de tu empresa, ese IVA que pagas se descuenta (<strong>IVA crédito</strong>). Al SII le pagas solo la diferencia.</p>
+          <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+            <div class="p-2 bg-slate-50 rounded-lg"><div class="font-bold text-slate-700">IVA débito</div><div class="text-slate-500 mt-0.5">Lo cobras</div></div>
+            <div class="p-2 bg-slate-50 rounded-lg"><div class="font-bold text-emerald-600">IVA crédito</div><div class="text-slate-500 mt-0.5">Lo recuperas</div></div>
+            <div class="p-2 bg-amber-50 rounded-lg"><div class="font-bold text-amber-600">IVA neto</div><div class="text-slate-500 mt-0.5">Lo pagas</div></div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 border border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-amber-600" style="font-size:18px">toll</span></div>
+            <h3 class="font-headline text-base font-bold text-slate-900">PPM — Pago Provisional Mensual</h3>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">Un anticipo mensual del IDPC anual. El SII te asigna una tasa (actualmente <strong>0.2%</strong> sobre ingresos netos, se ajusta cada junio). Cada mes lo pagas junto al F29. En abril cuando presentas la renta, todos los PPM se descuentan del IDPC que debes.</p>
+          <div class="mt-3 p-3 bg-amber-50 rounded-lg text-xs text-amber-700 font-medium">Si pagaste mucho PPM durante el año y tu IDPC es menor, el SII te devuelve la diferencia.</div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 border border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-red-500" style="font-size:18px">savings</span></div>
+            <h3 class="font-headline text-base font-bold text-slate-900">IDPC — Impuesto de Primera Categoría</h3>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed"><strong>25%</strong> sobre las utilidades anuales de tu empresa. Se calcula una vez al año en <strong>abril</strong> cuando presentas la Operación Renta. Los PPM que pagaste mensualmente se descuentan. Si el IDPC resulta menor a los PPM acumulados, el SII te devuelve.</p>
+          <div class="mt-3 p-3 bg-slate-50 rounded-lg font-mono text-xs text-slate-600">
+            Utilidad = Ingresos − Gastos − Sueldo<br>
+            IDPC bruto = Utilidad × 25%<br>
+            IDPC a pagar = IDPC bruto − PPM acumulados
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 border border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-emerald-600" style="font-size:18px">person</span></div>
+            <h3 class="font-headline text-base font-bold text-slate-900">Sueldo empresarial</h3>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">El sueldo que te pagas como trabajador de tu propia empresa. Para la empresa es un <strong>gasto deducible</strong> — reduce la utilidad y por lo tanto el IDPC. Para ti como persona, tributa en <strong>impuesto de 2ª categoría</strong> (mensual, retención automática).</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 border border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-blue-600" style="font-size:18px">swap_horiz</span></div>
+            <h3 class="font-headline text-base font-bold text-slate-900">Retiro de utilidades y Global Complementario</h3>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">Cuando retiras plata de las utilidades de tu empresa, ese monto tributa en <strong>Global Complementario</strong> — el impuesto personal anual con tramos del 0% al 35%. La ventaja: obtienes un <strong>crédito</strong> equivalente al IDPC pagado sobre esa utilidad, evitando la doble tributación.</p>
+        </div>
+
+        <div class="bg-primary-c text-white rounded-xl p-6">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined text-teal-300" style="font-variation-settings:'FILL' 1">lightbulb</span>
+            <h3 class="font-headline text-sm font-bold">Régimen Pro Pyme General (14D N°3)</h3>
+          </div>
+          <p class="text-sm text-slate-300 leading-relaxed">Tu empresa está en este régimen. Ventajas clave: IDPC al 25% (vs 27% régimen general), contabilidad simplificada, y los gastos pagados en el año son deducibles inmediatamente.</p>
+        </div>
+
+      </div>
+    </div>
+
   </div><!-- end content -->
 </main>
 
@@ -466,6 +648,12 @@ function _lsSet(v){try{localStorage.setItem('nbm_v3',JSON.stringify(v))}catch(e)
 let data=_lsGet();
 let gTemp=[];
 let MC=null,PC=null,OC=null;
+
+// Config: sync URL y cotizaciones
+const _DEFAULT_SYNC_URL='https://script.google.com/macros/s/AKfycbysq3bBQfuviZbxC0hZvQ8DofkjGMrNnP3UCktcgEFlAUEi4qaDb_XcuQe-tkOuq8eACw/exec';
+let SYNC_URL='';try{SYNC_URL=localStorage.getItem('nbm_sync_url')||_DEFAULT_SYNC_URL}catch(e){SYNC_URL=_DEFAULT_SYNC_URL;}
+let COTIZ={afp:12.5,salud:7,cesantia:0.6};
+try{const _c=JSON.parse(localStorage.getItem('nbm_cotiz')||'null');if(_c)COTIZ=_c;}catch(e){}
 
 const _nf=new Intl.NumberFormat('es-CL',{useGrouping:true,maximumFractionDigits:0});
 const fmt=n=>(n<0?'-':'')+'$'+_nf.format(Math.abs(Math.round(n)));
@@ -484,9 +672,63 @@ function autoFmtInt(el){
   try{el.setSelectionRange(pos+diff,pos+diff)}catch(e){}
 }
 function autoFmtDec(el){
-  // Permite solo dígitos y una coma como separador decimal
   el.value=el.value.replace(/[^0-9,]/g,'').replace(/(,.*),/g,'$1');
 }
+
+// === GOOGLE SHEETS SYNC ===
+function updateSyncStatus(msg){const el=document.getElementById('sync-status');if(el)el.textContent=msg;}
+async function syncToSheets(){
+  if(!SYNC_URL)return;
+  try{
+    await fetch(SYNC_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({meses:data})});
+    updateSyncStatus('✓ Sincronizado '+new Date().toLocaleTimeString('es-CL'));
+  }catch(e){updateSyncStatus('Pendiente (sin conexión)');}
+}
+function syncNow(){
+  if(!SYNC_URL){alert('Configura la URL del Web App primero');return;}
+  updateSyncStatus('Sincronizando...');
+  syncToSheets();
+}
+async function restoreFromSheets(){
+  if(!SYNC_URL){alert('Configura la URL primero');return;}
+  if(!confirm('¿Restaurar datos desde Google Sheets? Esto reemplazará los datos actuales.'))return;
+  updateSyncStatus('Restaurando...');
+  try{
+    const res=await fetch(SYNC_URL);
+    const restored=await res.json();
+    if(Array.isArray(restored)&&restored.length){
+      data=restored;_lsSet(data);renderResumen();
+      updateSyncStatus('✓ Restaurados '+restored.length+' meses');
+    }else{updateSyncStatus('No se encontraron datos en el backup');}
+  }catch(e){updateSyncStatus('Error: '+e.message);}
+}
+function saveConfig(){
+  SYNC_URL=(document.getElementById('cfg-url').value||'').trim();
+  try{localStorage.setItem('nbm_sync_url',SYNC_URL)}catch(e){}
+  updateSyncStatus(SYNC_URL?'✓ URL guardada — los datos se sincronizarán automáticamente':'Sin URL configurada');
+}
+function saveCotiz(){
+  COTIZ.afp=pFloat('cfg-afp')||12.5;
+  COTIZ.salud=pFloat('cfg-salud')||7;
+  COTIZ.cesantia=pFloat('cfg-cesantia')||0.6;
+  try{localStorage.setItem('nbm_cotiz',JSON.stringify(COTIZ))}catch(e){}
+  updateCotizTotal();
+  const el=document.getElementById('cotiz-status');
+  if(el)el.textContent='✓ Parámetros guardados — se reflejan en Optimización';
+}
+function updateCotizTotal(){
+  const total=COTIZ.afp+COTIZ.salud+COTIZ.cesantia;
+  const el=document.getElementById('cfg-cotiz-total');
+  if(el)el.value=total.toFixed(1).replace('.',',');
+}
+function initConfig(){
+  const urlEl=document.getElementById('cfg-url');if(urlEl&&SYNC_URL)urlEl.value=SYNC_URL;
+  const afpEl=document.getElementById('cfg-afp');if(afpEl)afpEl.value=COTIZ.afp.toString().replace('.',',');
+  const salEl=document.getElementById('cfg-salud');if(salEl)salEl.value=COTIZ.salud.toString().replace('.',',');
+  const cesEl=document.getElementById('cfg-cesantia');if(cesEl)cesEl.value=COTIZ.cesantia.toString().replace('.',',');
+  updateCotizTotal();
+}
+
 const key=(m,a)=>`${m}-${a}`;
 const getReg=(m,a)=>data.find(d=>d.key===key(m,a))||null;
 const calcMes=m=>{
@@ -500,7 +742,7 @@ const calcMes=m=>{
   const caja=m.comisiones-gN-(m.sueldo||0)-(m.retiro||0)-ppmM;
   return{ivaD,ivaC,ivaP,ppmM,util,f29,caja,gN};
 };
-const save=()=>_lsSet(data);
+const save=()=>{_lsSet(data);syncToSheets();};
 const sortD=()=>data.sort((a,b)=>{const ya=+a.anio,yb=+b.anio;return ya!==yb?ya-yb:MESES.indexOf(a.mes)-MESES.indexOf(b.mes)});
 
 function openSb(){document.querySelector('.sidebar').classList.add('open');document.getElementById('ov').classList.add('open')}
@@ -517,6 +759,9 @@ function show(id,btn){
   if(id==='proyeccion')renderProyeccion();
   if(id==='optimizacion')renderOptimizacion();
   if(id==='gastos')loadGastosTemp();
+  if(id==='config')initConfig();
+  const titles={'resumen':'Dashboard Tributario','ingresos':'Ingresar ingresos','gastos':'Ingresar gastos','historial':'Historial','proyeccion':'Acumulado real','optimizacion':'Optimización tributaria','config':'Configuración','guia':'Guía tributaria'};
+  const tb=document.getElementById('topbar-title');if(tb&&titles[id])tb.textContent=titles[id];
 }
 
 // INGRESOS
@@ -525,7 +770,7 @@ function guardarIngresos(){
   const com=pInt('ic');
   if(!com){alert('Ingresa las comisiones del mes');return}
   const k=key(m,a),idx=data.findIndex(d=>d.key===k);
-  const reg={key:k,mes:m,anio:a,comisiones:com,sueldo:pInt('is'),retiro:pInt('ir'),tasaIva:pFloat('iv')||19,tasaPpm:pFloat('ip')||0.2,gastos:idx>=0?data[idx].gastos:[]};
+  const reg={key:k,mes:m,anio:a,comisiones:com,sueldo:pInt('is'),retiro:pInt('ir'),tasaIva:pFloat('iv')||19,tasaPpm:pFloat('ip')||0.2,gastos:idx>=0?data[idx].gastos:[],f29Pagado:idx>=0?(data[idx].f29Pagado||false):false};
   if(idx>=0)data[idx]=reg;else data.push(reg);
   sortD();save();renderResumen();
   const b=document.getElementById('btn-ing');
@@ -573,7 +818,7 @@ function renderHistorial(){
     const c=calcMes(m);
     return`<div class="hm">
       <div class="hm-hdr" onclick="toggleHm('${m.key}')">
-        <div class="hm-title">${m.mes} ${m.anio}<span class="tag tag-${c.caja>=0?'g':'r'}">${fmt(c.caja)}</span></div>
+        <div class="hm-title">${m.mes} ${m.anio}<span class="tag tag-${c.caja>=0?'g':'r'}">${fmt(c.caja)}</span><span class="tag ${m.f29Pagado?'tag-g':'tag-a'}">${m.f29Pagado?'F29 pagado':'F29 pendiente'}</span></div>
         <div class="hm-sum">
           <span style="font-size:12px;color:var(--text3)">Ingresos <b style="color:var(--text);font-family:var(--mono)">${fmt(m.comisiones)}</b></span>
           <span style="font-size:12px;color:var(--text3)">F29 <b style="color:var(--amber);font-family:var(--mono)">${fmt(c.f29)}</b></span>
@@ -599,6 +844,9 @@ function renderHistorial(){
         </div>
         <div class="btn-row" style="margin-top:16px">
           <button class="btn btn-p btn-sm" onclick="hGuardar('${m.key}')">Guardar cambios</button>
+          <button class="btn btn-sm ${m.f29Pagado?'btn-d':'btn-g'}" onclick="toggleF29('${m.key}')" style="${m.f29Pagado?'':'background:#0f7b6c;color:white'}">
+            ${m.f29Pagado?'✓ F29 pagado — marcar pendiente':'Marcar F29 como pagado'}
+          </button>
           <button class="btn btn-d btn-sm" onclick="hEliminar('${m.key}')">Eliminar mes</button>
         </div>
       </div>
@@ -634,18 +882,56 @@ function hEliminar(k){
   data=data.filter(d=>d.key!==k);save();renderHistorial();renderResumen();
 }
 
+// F29 PAGADO
+function toggleF29(k){
+  const idx=data.findIndex(d=>d.key===k);if(idx<0)return;
+  data[idx].f29Pagado=!data[idx].f29Pagado;
+  save();renderHistorial();renderResumen();
+  // Mantener abierto el mes editado
+  const hb=document.getElementById('hb-'+k);if(hb)hb.classList.add('open');
+}
+function marcarF29PagadoAlerta(){
+  const alerta=checkF29Alerta();if(!alerta.activa)return;
+  const k2=key(alerta.mes,alerta.anio);
+  const idx=data.findIndex(d=>d.key===k2);
+  if(idx>=0){data[idx].f29Pagado=true;save();renderResumen();}
+}
+function checkF29Alerta(){
+  const hoy=new Date();
+  const diaHoy=hoy.getDate();
+  // El F29 del mes anterior vence el 12 del mes actual
+  const mesAnteriorIdx=hoy.getMonth()===0?11:hoy.getMonth()-1;
+  const anioMesAnt=hoy.getMonth()===0?hoy.getFullYear()-1:hoy.getFullYear();
+  const mesNombre=MESES[mesAnteriorIdx];
+  const anioStr=anioMesAnt.toString();
+  const reg=getReg(mesNombre,anioStr);
+  if(reg&&!reg.f29Pagado){
+    const c=calcMes(reg);
+    const diasRestantes=12-diaHoy;
+    return{activa:true,mes:mesNombre,anio:anioStr,monto:c.f29,diasRestantes,vencido:diasRestantes<0};
+  }
+  return{activa:false};
+}
+
 // RESUMEN
 function renderResumen(){
   if(!data.length){
     document.getElementById('mtop').innerHTML='<div class="col-span-4 bg-white rounded-xl p-8 border border-slate-100 text-center"><p class="text-slate-400 text-sm">Sin datos aún — ve a <strong>Ingresar ingresos</strong> para comenzar.</p></div>';
     document.getElementById('flujo').innerHTML='';document.getElementById('oblig').innerHTML='';
-    document.getElementById('clegend').innerHTML='';if(MC){MC.destroy();MC=null}return;
+    document.getElementById('clegend').innerHTML='';const _p=document.getElementById('idpc-provision');if(_p)_p.style.display='none';if(MC){MC.destroy();MC=null}return;
   }
   const ul=data[data.length-1],c=calcMes(ul);
   const tI=data.reduce((a,m)=>a+m.comisiones,0);
   const tF=data.reduce((a,m)=>a+calcMes(m).f29,0);
   const tP=data.reduce((a,m)=>a+calcMes(m).ppmM,0);
   const tC=data.reduce((a,m)=>a+calcMes(m).caja,0);
+  // IDPC estimado (calculado una vez, usado en KPI 4 y en provisión)
+  const tGasA=data.reduce((a,m)=>a+calcMes(m).gN,0);
+  const tSuA=data.reduce((a,m)=>a+(m.sueldo||0),0);
+  const utilAcum=tI-tGasA-tSuA;
+  const idpcBrutoAcum=Math.max(0,utilAcum*0.25);
+  const idpcNetoAcum=Math.max(0,idpcBrutoAcum-tP);
+  const provMensual=data.length>0?Math.round(idpcNetoAcum/data.length):0;
   const _rsub=document.getElementById('rsub');if(_rsub)_rsub.textContent=`Último mes: ${ul.mes} ${ul.anio}`;
   document.getElementById('mtop').innerHTML=`
     <div class="bg-white rounded-xl p-5 border border-slate-100 hover:border-slate-200 transition-all">
@@ -672,13 +958,13 @@ function renderResumen(){
       <div class="font-mono text-xl font-medium text-amber-600">${fmt(tF)}</div>
       <div class="text-[11px] text-amber-500 mt-1">IVA + PPM acumulado</div>
     </div>
-    <div class="bg-white rounded-xl p-5 border border-slate-100 hover:border-slate-200 transition-all">
+    <div class="bg-white rounded-xl p-5 border border-slate-100 hover:border-slate-200 transition-all" style="border-left:3px solid ${idpcNetoAcum>0?'#ef4444':'#10b981'}">
       <div class="flex justify-between items-start mb-3">
-        <div class="p-1.5 bg-amber-50 rounded-lg"><span class="material-symbols-outlined text-amber-600" style="font-size:18px;">toll</span></div>
-        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">PPM acumulado</span>
+        <div class="p-1.5 ${idpcNetoAcum>0?'bg-red-50':'bg-emerald-50'} rounded-lg"><span class="material-symbols-outlined ${idpcNetoAcum>0?'text-red-500':'text-emerald-600'}" style="font-size:18px;">savings</span></div>
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">IDPC a pagar</span>
       </div>
-      <div class="font-mono text-xl font-medium text-amber-600">${fmt(tP)}</div>
-      <div class="text-[11px] text-slate-400 mt-1">anticipo IDPC</div>
+      <div class="font-mono text-xl font-medium ${idpcNetoAcum>0?'text-red-500':'text-emerald-600'}">${fmt(idpcNetoAcum)}</div>
+      <div class="text-[11px] text-slate-400 mt-1">${idpcNetoAcum===0?'PPM cubre el estimado':'estimado · abril 2027'}</div>
     </div>`;
   document.getElementById('flujo').innerHTML=`
     <div class="row"><span class="row-l">Ingreso neto (${ul.mes})</span><span class="row-v g">${fmt(ul.comisiones)}</span></div>
@@ -708,6 +994,36 @@ function renderResumen(){
     {type:'bar',label:'F29',data:data.map(d=>calcMes(d).f29),backgroundColor:'rgba(196,123,0,.7)',borderRadius:4},
     {type:'line',label:'Caja neta',data:data.map(d=>calcMes(d).caja),borderColor:'#0f7b6c',backgroundColor:'rgba(15,123,108,.08)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'#0f7b6c'}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:11},autoSkip:false}},y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:11},callback:v=>'$'+Math.round(v/1000)+'k'}}}}});
+
+  // Provisión IDPC (valores ya calculados al inicio de renderResumen)
+  const provEl=document.getElementById('idpc-provision');
+  const provCont=document.getElementById('idpc-prov-content');
+  if(provEl)provEl.style.display='block';
+  if(provCont){
+    if(idpcNetoAcum===0){
+      provCont.innerHTML=`Tus PPM pagados (<strong class="text-white">${fmt(tP)}</strong>) cubren el IDPC estimado. ✓ Sin deuda tributaria acumulada por IDPC.`;
+    }else{
+      provCont.innerHTML=`Llevas <strong class="text-white">${fmt(idpcNetoAcum)}</strong> de IDPC estimado (después de descontar PPM). Separa aprox. <strong class="text-white">${fmt(provMensual)}/mes</strong> para no tener sorpresas en abril 2027.`;
+    }
+  }
+  // Alerta F29
+  const alertaEl=document.getElementById('f29-alerta');
+  const alertaMsg=document.getElementById('f29-alerta-msg');
+  const alertaSub=document.getElementById('f29-alerta-sub');
+  if(alertaEl&&alertaMsg&&alertaSub){
+    const alerta=checkF29Alerta();
+    if(alerta.activa){
+      alertaEl.style.display='flex';
+      alertaEl.style.borderColor=alerta.vencido?'#dc2626':'#f87171';
+      alertaEl.style.background=alerta.vencido?'#fef2f2':'#fff5f5';
+      alertaMsg.textContent=alerta.vencido
+        ?`F29 de ${alerta.mes} ${alerta.anio} VENCIDO — ${fmt(alerta.monto)} sin pagar`
+        :`F29 de ${alerta.mes} ${alerta.anio} vence en ${alerta.diasRestantes} día${alerta.diasRestantes===1?'':'s'} (el 12)`;
+      alertaSub.textContent=`Monto: ${fmt(alerta.monto)} · IVA + PPM · Márcalo como pagado cuando presentes el formulario`;
+    }else{
+      alertaEl.style.display='none';
+    }
+  }
 }
 
 // ACUMULADO REAL
@@ -823,7 +1139,10 @@ function calcGC(rentaAnual) {
   return Math.max(0, imp);
 }
 
-function calcSegCat(sueldoMensual) {
+function calcSegCat(sueldoMensualBruto) {
+  // Descontar cotizaciones previsionales del bruto para obtener renta imponible
+  const totalCotiz = (COTIZ.afp + COTIZ.salud + COTIZ.cesantia) / 100;
+  const sueldoMensual = sueldoMensualBruto * (1 - totalCotiz);
   const tramos = [
     {desde:0,       hasta:780000,   tasa:0},
     {desde:780000,  hasta:1733333,  tasa:0.04},
@@ -840,6 +1159,9 @@ function calcSegCat(sueldoMensual) {
   }
   return Math.max(0, imp);
 }
+function getCotizMensual(sueldoBruto) {
+  return sueldoBruto * (COTIZ.afp + COTIZ.salud + COTIZ.cesantia) / 100;
+}
 
 function renderOptimizacion() {
   const sueldoMes = parseInt(document.getElementById('sl-sueldo').value) || 0;
@@ -854,6 +1176,13 @@ function renderOptimizacion() {
 
   // Datos reales acumulados — se ajusta según meses ingresados
   const n = data.length;
+  // Aviso de confiabilidad si hay pocos meses
+  const confEl=document.getElementById('opt-confiabilidad');
+  const confMsg=document.getElementById('opt-conf-msg');
+  if(confEl&&confMsg){
+    if(n<3){confEl.style.display='flex';confMsg.textContent=`Solo ${n} mes${n===1?'':'es'} registrado${n===1?'':'s'} — la proyección anual extrapola desde pocos datos. Agrega más meses para mayor precisión.`;}
+    else{confEl.style.display='none';}
+  }
   const tIng = data.reduce((a,m) => a+m.comisiones, 0);
   const tGastos = data.reduce((a,m) => a+calcMes(m).gN, 0);
   const tPpm = data.reduce((a,m) => a+calcMes(m).ppmM, 0);
@@ -877,9 +1206,12 @@ function renderOptimizacion() {
   // Impuesto 2ª categoría (mensual × 12)
   const impSegCat = calcSegCat(sueldoMes) * 12;
 
-  // Global Complementario sobre retiro (base = utilidad empresa, crédito = IDPC bruto)
-  const impGCBruto = retiroAnual > 0 ? calcGC(utilidad) : 0;
-  const creditoIDPC = idpcBruto;
+  // Global Complementario: base = menor entre retiro y utilidad disponible
+  // Crédito IDPC proporcional al porcentaje de utilidad retirada
+  const baseGC = Math.min(retiroAnual, utilidad);
+  const impGCBruto = baseGC > 0 ? calcGC(baseGC) : 0;
+  const fraccionRetirada = utilidad > 0 ? baseGC / utilidad : 0;
+  const creditoIDPC = Math.round(idpcBruto * fraccionRetirada);
   const impGCNeto = Math.max(0, impGCBruto - creditoIDPC);
   const devolucion = creditoIDPC > impGCBruto ? creditoIDPC - impGCBruto : 0;
 
@@ -909,13 +1241,17 @@ function renderOptimizacion() {
     <div class="row"><span class="row-l">PPM descontados</span><span class="row-v g">-${fmt(ppmAnual)}</span></div>
     <div class="row tot"><span class="row-l">IDPC estimado abril</span><span class="row-v a">${fmt(idpcNeto)}</span></div>`;
 
-  // Detalle persona
+  // Detalle persona — con cotizaciones previsionales
+  const cotizAnual = getCotizMensual(sueldoMes) * 12;
+  const sueldoLiquido = sueldoAnual - cotizAnual - impSegCat;
   document.getElementById('opt-persona').innerHTML = `
     <div class="row"><span class="row-l">Sueldo bruto anual</span><span class="row-v">${fmt(sueldoAnual)}</span></div>
+    <div class="row"><span class="row-l">Cotizaciones prev. (${(COTIZ.afp+COTIZ.salud+COTIZ.cesantia).toFixed(1)}%)</span><span class="row-v r">-${fmt(cotizAnual)}</span></div>
     <div class="row"><span class="row-l">Imp. 2ª cat. anual</span><span class="row-v a">-${fmt(impSegCat)}</span></div>
-    <div class="row"><span class="row-l">Base Global Comp.</span><span class="row-v">${fmt(utilidad)}</span></div>
+    <div class="row"><span class="row-l">Sueldo líquido anual</span><span class="row-v ${sueldoLiquido>=0?'g':''}">${fmt(sueldoLiquido)}</span></div>
+    <div class="row" style="border-top:1px solid #e6e8ea;margin-top:4px;padding-top:10px"><span class="row-l">Base Global Comp.</span><span class="row-v">${fmt(baseGC)}</span></div>
     <div class="row"><span class="row-l">Imp. GC bruto</span><span class="row-v a">-${fmt(impGCBruto)}</span></div>
-    <div class="row"><span class="row-l">Crédito IDPC</span><span class="row-v g">+${fmt(creditoIDPC)}</span></div>
+    <div class="row"><span class="row-l">Crédito IDPC (${Math.round(fraccionRetirada*100)}%)</span><span class="row-v g">+${fmt(creditoIDPC)}</span></div>
     <div class="row tot"><span class="row-l">${devolucion>0?'Devolución SII':'GC a pagar'}</span><span class="row-v ${devolucion>0?'g':'a'}">${devolucion>0?'+':''}${fmt(devolucion>0?devolucion:impGCNeto)}</span></div>`;
 
   // Recomendación
@@ -943,7 +1279,8 @@ function renderOptimizacion() {
     const ib = u*0.25;
     const iN = Math.max(0, ib - ppmAnual);
     const sc = calcSegCat(s)*12;
-    const gc = retiroAnual>0 ? Math.max(0, calcGC(u) - ib) : 0;
+    const baseGCi=Math.min(retiroAnual,u);const fracI=u>0?baseGCi/u:0;
+    const gc=baseGCi>0?Math.max(0,calcGC(baseGCi)-ib*fracI):0;
     idpcs.push(Math.round(iN));
     seg2cats.push(Math.round(sc));
     gcs.push(Math.round(gc));
@@ -976,6 +1313,7 @@ function renderOptimizacion() {
 
 renderResumen();
 loadGastosTemp();
+initConfig();
 </script>
 </body>
 </html>
