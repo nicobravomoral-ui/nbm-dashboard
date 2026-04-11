@@ -287,15 +287,22 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
           </div>
           <div class="fr2">
             <div class="field"><label>Mes</label>
-              <select id="im"><option>Enero</option><option>Febrero</option><option selected>Marzo</option><option>Abril</option><option>Mayo</option><option>Junio</option><option>Julio</option><option>Agosto</option><option>Septiembre</option><option>Octubre</option><option>Noviembre</option><option>Diciembre</option></select>
+              <select id="im" onchange="loadIngresosTemp()"><option>Enero</option><option>Febrero</option><option selected>Marzo</option><option>Abril</option><option>Mayo</option><option>Junio</option><option>Julio</option><option>Agosto</option><option>Septiembre</option><option>Octubre</option><option>Noviembre</option><option>Diciembre</option></select>
             </div>
             <div class="field"><label>Año</label>
-              <select id="ia"><option>2026</option><option>2027</option><option>2028</option></select>
+              <select id="ia" onchange="loadIngresosTemp()"><option>2026</option><option>2027</option><option>2028</option></select>
             </div>
           </div>
-          <div class="field"><label>Comisiones netas (sin IVA) $</label>
-            <input type="text" id="ic" placeholder="0" inputmode="numeric" oninput="autoFmtInt(this)">
-            <div class="hint">Monto neto de la factura sin IVA</div>
+          <div class="flex items-center gap-2 mt-2 mb-1">
+            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 font-headline">Facturas / ingresos del mes</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-3">Monto neto sin IVA por cada factura emitida</p>
+          <div id="ilist"></div>
+          <div class="add-row" style="grid-template-columns:1fr 140px auto">
+            <div class="field"><input type="text" id="idesc" placeholder="Descripción (ej: honorarios cliente A)"></div>
+            <div class="field"><input type="text" id="imonto" placeholder="Monto neto $" inputmode="numeric" oninput="autoFmtInt(this)"></div>
+            <button onclick="addIngreso()" class="px-3 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-black transition-colors whitespace-nowrap">+ Agregar</button>
           </div>
           <div class="fr2">
             <div class="field"><label>Sueldo empresarial $</label>
@@ -315,7 +322,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
           </div>
           <div class="fr2">
             <div class="field"><label>IVA %</label><input type="text" id="iv" value="19" inputmode="decimal" oninput="autoFmtDec(this)"></div>
-            <div class="field"><label>PPM %</label><input type="text" id="ip" value="0,2" inputmode="decimal" oninput="autoFmtDec(this)"><div class="hint">SII ajusta en junio</div></div>
+            <div class="field"><label>PPM %</label><input type="text" id="ip" value="2" inputmode="decimal" oninput="autoFmtDec(this)"><div class="hint">Tasa fija 2% — ajusta si SII notifica</div></div>
           </div>
         </div>
         <div class="flex gap-3">
@@ -356,11 +363,12 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
             <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
             <span class="text-xs font-bold uppercase tracking-wider text-slate-500 font-headline">Gastos del mes</span>
           </div>
-          <p class="text-xs text-slate-400 mb-4">Solo gastos con factura a nombre de la empresa → IVA crédito + deducibles</p>
+          <p class="text-xs text-slate-400 mb-4">Con factura → IVA crédito + deducible. Sin factura → solo deducible (no genera IVA crédito)</p>
           <div id="glist"></div>
-          <div class="add-row">
+          <div class="add-row" style="grid-template-columns:1fr 130px 120px auto">
             <div class="field"><input type="text" id="gdesc" placeholder="Descripción (ej: arriendo oficina)"></div>
             <div class="field"><input type="text" id="gmonto" placeholder="Monto neto $" inputmode="numeric" oninput="autoFmtInt(this)"></div>
+            <div class="field"><select id="gfact"><option value="1">Con factura</option><option value="0">Sin factura</option></select></div>
             <button onclick="addGasto()" class="px-3 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-black transition-colors whitespace-nowrap">+ Agregar</button>
           </div>
         </div>
@@ -593,7 +601,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
             <div class="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-amber-600" style="font-size:18px">toll</span></div>
             <h3 class="font-headline text-base font-bold text-slate-900">PPM — Pago Provisional Mensual</h3>
           </div>
-          <p class="text-sm text-slate-600 leading-relaxed">Un anticipo mensual del IDPC anual. El SII te asigna una tasa (actualmente <strong>0.2%</strong> sobre ingresos netos, se ajusta cada junio). Cada mes lo pagas junto al F29. En abril cuando presentas la renta, todos los PPM se descuentan del IDPC que debes.</p>
+          <p class="text-sm text-slate-600 leading-relaxed">Un anticipo mensual del IDPC anual. El SII te asigna una tasa (en este sistema usamos <strong>2%</strong> sobre ingresos netos, se ajusta cada junio según resolución SII). Cada mes lo pagas junto al F29. En abril cuando presentas la renta, todos los PPM se descuentan del IDPC que debes.</p>
           <div class="mt-3 p-3 bg-amber-50 rounded-lg text-xs text-amber-700 font-medium">Si pagaste mucho PPM durante el año y tu IDPC es menor, el SII te devuelve la diferencia.</div>
         </div>
 
@@ -645,8 +653,20 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 function _lsGet(){try{return JSON.parse(localStorage.getItem('nbm_v3')||'[]')}catch(e){return[]}}
 function _lsSet(v){try{localStorage.setItem('nbm_v3',JSON.stringify(v))}catch(e){}}
-let data=_lsGet();
+function migrarData(arr){
+  return arr.map(m=>{
+    // comisiones number → ingresos array
+    if(!m.ingresos){m.ingresos=m.comisiones>0?[{desc:'Comisiones',monto:m.comisiones}]:[];}
+    // asegurar facturado en cada gasto
+    m.gastos=(m.gastos||[]).map(g=>({...g,facturado:g.facturado!==false}));
+    // PPM 0.2 → 2
+    if((m.tasaPpm||0)===0.2)m.tasaPpm=2;
+    return m;
+  });
+}
+let data=migrarData(_lsGet());
 let gTemp=[];
+let iTemp=[];
 let MC=null,PC=null,OC=null;
 
 // Config: sync URL y cotizaciones
@@ -691,11 +711,6 @@ function syncNow(){
   updateSyncStatus('Sincronizando...');
   syncToSheets();
 }
-function syncNow(){
-  if(!SYNC_URL){alert('Configura la URL del Web App primero');return;}
-  updateSyncStatus('Sincronizando...');
-  syncToSheets();
-}
 async function restoreFromSheets(){
   if(!SYNC_URL){alert('Configura la URL primero');return;}
   if(!confirm('¿Restaurar datos desde Google Sheets? Esto reemplazará los datos actuales.'))return;
@@ -704,8 +719,8 @@ async function restoreFromSheets(){
     const res=await fetch(SYNC_URL);
     const restored=await res.json();
     if(Array.isArray(restored)&&restored.length){
-      data=restored;_lsSet(data);renderResumen();
-      updateSyncStatus('✓ Restaurados '+restored.length+' meses');
+      data=migrarData(restored);_lsSet(data);renderResumen();
+      updateSyncStatus('✓ Restaurados '+data.length+' meses');
     }else{updateSyncStatus('No se encontraron datos en el backup');}
   }catch(e){updateSyncStatus('Error: '+e.message);}
 }
@@ -739,15 +754,19 @@ function initConfig(){
 const key=(m,a)=>`${m}-${a}`;
 const getReg=(m,a)=>data.find(d=>d.key===key(m,a))||null;
 const calcMes=m=>{
-  const iva=(m.tasaIva||19)/100,ppm=(m.tasaPpm||0.2)/100;
-  const ivaD=m.comisiones*iva;
-  const gN=(m.gastos||[]).reduce((a,g)=>a+g.monto,0);
-  const ivaC=gN*iva,ivaP=Math.max(0,ivaD-ivaC);
-  const ppmM=m.comisiones*ppm;
-  const util=m.comisiones-gN-(m.sueldo||0);
+  const iva=(m.tasaIva||19)/100,ppm=(m.tasaPpm||2)/100;
+  const totalIng=(m.ingresos||[]).reduce((a,g)=>a+g.monto,0);
+  const ivaD=totalIng*iva;
+  // gastos facturables generan IVA crédito; no facturables solo reducen utilidad/caja
+  const gF=(m.gastos||[]).filter(g=>g.facturado!==false).reduce((a,g)=>a+g.monto,0);
+  const gNF=(m.gastos||[]).filter(g=>g.facturado===false).reduce((a,g)=>a+g.monto,0);
+  const gN=gF+gNF;
+  const ivaC=gF*iva,ivaP=Math.max(0,ivaD-ivaC);
+  const ppmM=totalIng*ppm;
+  const util=totalIng-gN-(m.sueldo||0);
   const f29=ivaP+ppmM;
-  const caja=m.comisiones-gN-(m.sueldo||0)-(m.retiro||0)-ppmM;
-  return{ivaD,ivaC,ivaP,ppmM,util,f29,caja,gN};
+  const caja=totalIng-gN-(m.sueldo||0)-(m.retiro||0)-ppmM;
+  return{ivaD,ivaC,ivaP,ppmM,util,f29,caja,gN,gF,gNF,totalIng};
 };
 const save=()=>{_lsSet(data);syncToSheets();};
 const sortD=()=>data.sort((a,b)=>{const ya=+a.anio,yb=+b.anio;return ya!==yb?ya-yb:MESES.indexOf(a.mes)-MESES.indexOf(b.mes)});
@@ -772,12 +791,30 @@ function show(id,btn){
 }
 
 // INGRESOS
+function loadIngresosTemp(){
+  const m=document.getElementById('im').value,a=document.getElementById('ia').value;
+  const reg=getReg(m,a);
+  iTemp=reg?[...(reg.ingresos||[])]:[];
+  renderIList('ilist',iTemp,delITemp);
+}
+function addIngreso(){
+  const d=document.getElementById('idesc').value.trim(),mo=pInt('imonto');
+  if(!d||!mo)return;
+  iTemp.push({desc:d,monto:mo});
+  document.getElementById('idesc').value='';document.getElementById('imonto').value='';
+  renderIList('ilist',iTemp,delITemp);
+}
+function delITemp(i){iTemp.splice(i,1);renderIList('ilist',iTemp,delITemp);}
+function renderIList(elId,list,delFn){
+  const el=document.getElementById(elId);
+  if(!list.length){el.innerHTML='<p style="font-size:12px;color:#76777d;padding:4px 0 8px">Sin ingresos agregados.</p>';return;}
+  el.innerHTML=list.map((g,i)=>`<div class="gi"><span class="gi-desc">${g.desc}</span><span class="gi-monto" style="color:#0f7b6c">${fmt(g.monto)}</span><button class="gi-del" onclick="${delFn.name}(${i})">×</button></div>`).join('');
+}
 function guardarIngresos(){
   const m=document.getElementById('im').value,a=document.getElementById('ia').value;
-  const com=pInt('ic');
-  if(!com){alert('Ingresa las comisiones del mes');return}
+  if(!iTemp.length){alert('Agrega al menos un ingreso');return;}
   const k=key(m,a),idx=data.findIndex(d=>d.key===k);
-  const reg={key:k,mes:m,anio:a,comisiones:com,sueldo:pInt('is'),retiro:pInt('ir'),tasaIva:pFloat('iv')||19,tasaPpm:pFloat('ip')||0.2,gastos:idx>=0?data[idx].gastos:[],f29Pagado:idx>=0?(data[idx].f29Pagado||false):false};
+  const reg={key:k,mes:m,anio:a,ingresos:[...iTemp],sueldo:pInt('is'),retiro:pInt('ir'),tasaIva:pFloat('iv')||19,tasaPpm:pFloat('ip')||2,gastos:idx>=0?data[idx].gastos:[],f29Pagado:idx>=0?(data[idx].f29Pagado||false):false};
   if(idx>=0)data[idx]=reg;else data.push(reg);
   sortD();save();renderResumen();
   const b=document.getElementById('btn-ing');
@@ -795,22 +832,23 @@ function loadGastosTemp(){
 }
 function addGasto(){
   const d=document.getElementById('gdesc').value.trim(),mo=pInt('gmonto');
+  const fact=document.getElementById('gfact')?.value!=='0';
   if(!d||!mo)return;
-  gTemp.push({desc:d,monto:mo});
+  gTemp.push({desc:d,monto:mo,facturado:fact});
   document.getElementById('gdesc').value='';document.getElementById('gmonto').value='';
   renderGList('glist',gTemp,delGTemp);
 }
 function delGTemp(i){gTemp.splice(i,1);renderGList('glist',gTemp,delGTemp)}
 function renderGList(elId,list,delFn){
   const el=document.getElementById(elId);
-  if(!list.length){el.innerHTML='<p style="font-size:12px;color:var(--text3);padding:4px 0 8px">Sin gastos agregados.</p>';return}
-  el.innerHTML=list.map((g,i)=>`<div class="gi"><span class="gi-desc">${g.desc}</span><span class="gi-monto">${fmt(g.monto)}</span><button class="gi-del" onclick="${delFn.name}(${i})">×</button></div>`).join('');
+  if(!list.length){el.innerHTML='<p style="font-size:12px;color:#76777d;padding:4px 0 8px">Sin gastos agregados.</p>';return}
+  el.innerHTML=list.map((g,i)=>`<div class="gi"><span class="gi-desc">${g.desc}${g.facturado===false?' <span class="tag tag-b" style="font-size:10px;margin-left:4px">sin factura</span>':''}</span><span class="gi-monto">${fmt(g.monto)}</span><button class="gi-del" onclick="${delFn.name}(${i})">×</button></div>`).join('');
 }
 function guardarGastos(){
   const m=document.getElementById('gm').value,a=document.getElementById('ga').value,k=key(m,a);
   const idx=data.findIndex(d=>d.key===k);
   if(idx>=0)data[idx].gastos=[...gTemp];
-  else data.push({key:k,mes:m,anio:a,comisiones:0,sueldo:0,retiro:0,tasaIva:19,tasaPpm:0.2,gastos:[...gTemp]});
+  else data.push({key:k,mes:m,anio:a,ingresos:[],sueldo:0,retiro:0,tasaIva:19,tasaPpm:2,gastos:[...gTemp]});
   sortD();save();renderResumen();
   const b=document.getElementById('btn-gas');
   b.innerHTML='<span class="material-symbols-outlined text-base">check</span>Guardado';b.style.background='#0f7b6c';
@@ -827,26 +865,32 @@ function renderHistorial(){
       <div class="hm-hdr" onclick="toggleHm('${m.key}')">
         <div class="hm-title">${m.mes} ${m.anio}<span class="tag tag-${c.caja>=0?'g':'r'}">${fmt(c.caja)}</span><span class="tag ${m.f29Pagado?'tag-g':'tag-a'}">${m.f29Pagado?'F29 pagado':'F29 pendiente'}</span></div>
         <div class="hm-sum">
-          <span style="font-size:12px;color:var(--text3)">Ingresos <b style="color:var(--text);font-family:var(--mono)">${fmt(m.comisiones)}</b></span>
+          <span style="font-size:12px;color:var(--text3)">Ingresos <b style="color:var(--text);font-family:var(--mono)">${fmt(calcMes(m).totalIng)}</b></span>
           <span style="font-size:12px;color:var(--text3)">F29 <b style="color:var(--amber);font-family:var(--mono)">${fmt(c.f29)}</b></span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--text3)"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
       </div>
       <div class="hm-body" id="hb-${m.key}">
-        <div class="hs-title">Ingresos y parámetros</div>
-        <div class="fr2" style="margin-bottom:12px">
-          <div class="field"><label>Comisiones netas $</label><input type="text" id="hc-${m.key}" value="${fmtN(m.comisiones)}" inputmode="numeric" oninput="autoFmtInt(this)"></div>
+        <div class="hs-title">Ingresos del mes</div>
+        <div id="hi-${m.key}"></div>
+        <div class="add-row" style="margin-top:8px;grid-template-columns:1fr 140px auto">
+          <div class="field"><input type="text" id="hid-${m.key}" placeholder="Descripción (ej: honorarios)"></div>
+          <div class="field"><input type="text" id="him-${m.key}" placeholder="Monto neto $" inputmode="numeric" oninput="autoFmtInt(this)"></div>
+          <button class="btn btn-g btn-sm" onclick="hAddIngreso('${m.key}')">+ Agregar</button>
+        </div>
+        <div class="fr2" style="margin-top:12px;margin-bottom:4px">
           <div class="field"><label>Sueldo empresarial $</label><input type="text" id="hs-${m.key}" value="${fmtN(m.sueldo||0)}" inputmode="numeric" oninput="autoFmtInt(this)"></div>
+          <div class="field"><label>Retiro $</label><input type="text" id="hr-${m.key}" value="${fmtN(m.retiro||0)}" inputmode="numeric" oninput="autoFmtInt(this)"></div>
         </div>
         <div class="fr2" style="margin-bottom:4px">
-          <div class="field"><label>Retiro $</label><input type="text" id="hr-${m.key}" value="${fmtN(m.retiro||0)}" inputmode="numeric" oninput="autoFmtInt(this)"></div>
-          <div class="field"><label>PPM %</label><input type="text" id="hp-${m.key}" value="${(m.tasaPpm||0.2).toString().replace('.',',')}" inputmode="decimal" oninput="autoFmtDec(this)"></div>
+          <div class="field"><label>PPM %</label><input type="text" id="hp-${m.key}" value="${(m.tasaPpm||2).toString().replace('.',',')}" inputmode="decimal" oninput="autoFmtDec(this)"></div>
         </div>
         <div class="hs-title">Gastos operacionales</div>
         <div id="hg-${m.key}"></div>
-        <div class="add-row" style="margin-top:8px">
+        <div class="add-row" style="margin-top:8px;grid-template-columns:1fr 110px 110px auto">
           <div class="field"><input type="text" id="hgd-${m.key}" placeholder="Descripción"></div>
-          <div class="field"><input type="text" id="hgm-${m.key}" placeholder="Monto $" inputmode="numeric" oninput="autoFmtInt(this)" style="width:130px"></div>
+          <div class="field"><input type="text" id="hgm-${m.key}" placeholder="Monto $" inputmode="numeric" oninput="autoFmtInt(this)"></div>
+          <div class="field"><select id="hgf-${m.key}"><option value="1">Con factura</option><option value="0">Sin factura</option></select></div>
           <button class="btn btn-g btn-sm" onclick="hAddGasto('${m.key}')">+ Agregar</button>
         </div>
         <div class="btn-row" style="margin-top:16px">
@@ -858,29 +902,46 @@ function renderHistorial(){
         </div>
       </div>
     </div>`}).join('');
-  data.forEach(m=>renderHG(m.key,[...(m.gastos||[])]));
+  data.forEach(m=>{
+    renderHG(m.key,[...(m.gastos||[])]);
+    renderHI(m.key,[...(m.ingresos||[])]);
+  });
 }
 function toggleHm(k){document.getElementById('hb-'+k).classList.toggle('open')}
 function renderHG(k,gs){
   const el=document.getElementById('hg-'+k);if(!el)return;
-  if(!gs.length){el.innerHTML='<p style="font-size:12px;color:var(--text3);padding:4px 0">Sin gastos.</p>';return}
-  el.innerHTML=gs.map((g,i)=>`<div class="gi"><span class="gi-desc">${g.desc}</span><span class="gi-monto">${fmt(g.monto)}</span><button class="gi-del" onclick="hDelGasto('${k}',${i})">×</button></div>`).join('');
+  if(!gs.length){el.innerHTML='<p style="font-size:12px;color:#76777d;padding:4px 0">Sin gastos.</p>';return}
+  el.innerHTML=gs.map((g,i)=>`<div class="gi"><span class="gi-desc">${g.desc}${g.facturado===false?' <span class="tag tag-b" style="font-size:10px;margin-left:4px">sin factura</span>':''}</span><span class="gi-monto">${fmt(g.monto)}</span><button class="gi-del" onclick="hDelGasto('${k}',${i})">×</button></div>`).join('');
+}
+function renderHI(k,ings){
+  const el=document.getElementById('hi-'+k);if(!el)return;
+  if(!ings.length){el.innerHTML='<p style="font-size:12px;color:#76777d;padding:4px 0">Sin ingresos.</p>';return;}
+  el.innerHTML=ings.map((g,i)=>`<div class="gi"><span class="gi-desc">${g.desc}</span><span class="gi-monto" style="color:#0f7b6c">${fmt(g.monto)}</span><button class="gi-del" onclick="hDelIngreso('${k}',${i})">×</button></div>`).join('');
+}
+function hDelIngreso(k,i){const idx=data.findIndex(d=>d.key===k);if(idx<0)return;data[idx].ingresos.splice(i,1);renderHI(k,data[idx].ingresos);save();}
+function hAddIngreso(k){
+  const d=document.getElementById('hid-'+k).value.trim(),mo=pIntEl(document.getElementById('him-'+k));
+  if(!d||!mo)return;
+  const idx=data.findIndex(d=>d.key===k);if(idx<0)return;
+  data[idx].ingresos.push({desc:d,monto:mo});
+  document.getElementById('hid-'+k).value='';document.getElementById('him-'+k).value='';
+  renderHI(k,data[idx].ingresos);save();
 }
 function hDelGasto(k,i){const idx=data.findIndex(d=>d.key===k);if(idx<0)return;data[idx].gastos.splice(i,1);renderHG(k,data[idx].gastos);save()}
 function hAddGasto(k){
   const d=document.getElementById('hgd-'+k).value.trim(),mo=pIntEl(document.getElementById('hgm-'+k));
+  const fact=document.getElementById('hgf-'+k)?.value!=='0';
   if(!d||!mo)return;
   const idx=data.findIndex(d=>d.key===k);if(idx<0)return;
-  data[idx].gastos.push({desc:d,monto:mo});
+  data[idx].gastos.push({desc:d,monto:mo,facturado:fact});
   document.getElementById('hgd-'+k).value='';document.getElementById('hgm-'+k).value='';
   renderHG(k,data[idx].gastos);save();
 }
 function hGuardar(k){
   const idx=data.findIndex(d=>d.key===k);if(idx<0)return;
-  data[idx].comisiones=pInt('hc-'+k);
   data[idx].sueldo=pInt('hs-'+k);
   data[idx].retiro=pInt('hr-'+k);
-  data[idx].tasaPpm=pFloat('hp-'+k)||0.2;
+  data[idx].tasaPpm=pFloat('hp-'+k)||2;
   save();renderResumen();renderHistorial();
   document.getElementById('hb-'+k).classList.add('open');
 }
@@ -928,7 +989,7 @@ function renderResumen(){
     document.getElementById('clegend').innerHTML='';const _p=document.getElementById('idpc-provision');if(_p)_p.style.display='none';if(MC){MC.destroy();MC=null}return;
   }
   const ul=data[data.length-1],c=calcMes(ul);
-  const tI=data.reduce((a,m)=>a+m.comisiones,0);
+  const tI=data.reduce((a,m)=>a+calcMes(m).totalIng,0);
   const tF=data.reduce((a,m)=>a+calcMes(m).f29,0);
   const tP=data.reduce((a,m)=>a+calcMes(m).ppmM,0);
   const tC=data.reduce((a,m)=>a+calcMes(m).caja,0);
@@ -974,11 +1035,11 @@ function renderResumen(){
       <div class="text-[11px] text-slate-400 mt-1">${idpcNetoAcum===0?'PPM cubre el estimado':'estimado · abril 2027'}</div>
     </div>`;
   document.getElementById('flujo').innerHTML=`
-    <div class="row"><span class="row-l">Ingreso neto (${ul.mes})</span><span class="row-v g">${fmt(ul.comisiones)}</span></div>
+    <div class="row"><span class="row-l">Ingreso neto (${ul.mes})</span><span class="row-v g">${fmt(c.totalIng)}</span></div>
     <div class="row"><span class="row-l">Gastos operacionales</span><span class="row-v r">${c.gN>0?'-':''}${fmt(c.gN)}</span></div>
     <div class="row"><span class="row-l">Sueldo empresarial</span><span class="row-v r">${(ul.sueldo||0)>0?'-':''}${fmt(ul.sueldo||0)}</span></div>
     <div class="row"><span class="row-l">Retiro utilidades</span><span class="row-v r">${(ul.retiro||0)>0?'-':''}${fmt(ul.retiro||0)}</span></div>
-    <div class="row"><span class="row-l">PPM (${ul.tasaPpm||0.2}%)</span><span class="row-v a">-${fmt(c.ppmM)}</span></div>
+    <div class="row"><span class="row-l">PPM (${ul.tasaPpm||2}%)</span><span class="row-v a">-${fmt(c.ppmM)}</span></div>
     <div class="row tot"><span class="row-l">Caja disponible</span><span class="row-v ${c.caja>=0?'g':'r'}">${fmt(c.caja)}</span></div>`;
   document.getElementById('topbar-sub').textContent='Último mes: '+ul.mes+' '+ul.anio;
   document.getElementById('oblig').innerHTML=`
@@ -997,7 +1058,7 @@ function renderResumen(){
     <div class="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded text-[10px] font-bold text-slate-600"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>Neto</div>`;
   if(MC)MC.destroy();
   MC=new Chart(document.getElementById('mainChart'),{data:{labels,datasets:[
-    {type:'bar',label:'Ingresos',data:data.map(d=>d.comisiones),backgroundColor:'rgba(35,131,226,.7)',borderRadius:4},
+    {type:'bar',label:'Ingresos',data:data.map(d=>calcMes(d).totalIng),backgroundColor:'rgba(35,131,226,.7)',borderRadius:4},
     {type:'bar',label:'F29',data:data.map(d=>calcMes(d).f29),backgroundColor:'rgba(196,123,0,.7)',borderRadius:4},
     {type:'line',label:'Caja neta',data:data.map(d=>calcMes(d).caja),borderColor:'#0f7b6c',backgroundColor:'rgba(15,123,108,.08)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'#0f7b6c'}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:11},autoSkip:false}},y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#999',font:{size:11},callback:v=>'$'+Math.round(v/1000)+'k'}}}}});
@@ -1046,7 +1107,7 @@ function renderProyeccion(){
   }
 
   // Totales reales
-  const tIng=data.reduce((a,m)=>a+m.comisiones,0);
+  const tIng=data.reduce((a,m)=>a+calcMes(m).totalIng,0);
   const tGastos=data.reduce((a,m)=>a+calcMes(m).gN,0);
   const tSueldo=data.reduce((a,m)=>a+(m.sueldo||0),0);
   const tRetiro=data.reduce((a,m)=>a+(m.retiro||0),0);
@@ -1087,7 +1148,7 @@ function renderProyeccion(){
   // IVA acumulado
   document.getElementById('piva').innerHTML=`
     <div class="row"><span class="row-l">IVA débito cobrado (acum.)</span><span class="row-v">${fmt(tIvaD)}</span></div>
-    <div class="row"><span class="row-l">IVA crédito por gastos (acum.)</span><span class="row-v g">${tIvaC>0?'-':''}${fmt(tIvaC)}</span></div>
+    <div class="row"><span class="row-l">IVA crédito (gastos c/factura)</span><span class="row-v g">${tIvaC>0?'-':''}${fmt(tIvaC)}</span></div>
     <div class="row tot"><span class="row-l">IVA neto pagado al SII</span><span class="row-v a">${fmt(tIvaP)}</span></div>`;
 
   // IDPC real
@@ -1112,7 +1173,7 @@ function renderProyeccion(){
   if(PC)PC.destroy();
   PC=new Chart(document.getElementById('proyChart'),{
     data:{labels,datasets:[
-      {type:'bar',label:'Ingresos',data:data.map(d=>d.comisiones),backgroundColor:'rgba(35,131,226,.75)',borderRadius:4},
+      {type:'bar',label:'Ingresos',data:data.map(d=>calcMes(d).totalIng),backgroundColor:'rgba(35,131,226,.75)',borderRadius:4},
       {type:'bar',label:'F29',data:data.map(d=>calcMes(d).f29),backgroundColor:'rgba(196,123,0,.7)',borderRadius:4},
       {type:'line',label:'Caja neta',data:data.map(d=>calcMes(d).caja),borderColor:'#0f7b6c',backgroundColor:'rgba(15,123,108,.08)',fill:true,tension:.4,pointRadius:5,pointBackgroundColor:'#0f7b6c'}
     ]},
@@ -1190,7 +1251,7 @@ function renderOptimizacion() {
     if(n<3){confEl.style.display='flex';confMsg.textContent=`Solo ${n} mes${n===1?'':'es'} registrado${n===1?'':'s'} — la proyección anual extrapola desde pocos datos. Agrega más meses para mayor precisión.`;}
     else{confEl.style.display='none';}
   }
-  const tIng = data.reduce((a,m) => a+m.comisiones, 0);
+  const tIng = data.reduce((a,m) => a+calcMes(m).totalIng, 0);
   const tGastos = data.reduce((a,m) => a+calcMes(m).gN, 0);
   const tPpm = data.reduce((a,m) => a+calcMes(m).ppmM, 0);
 
@@ -1318,9 +1379,24 @@ function renderOptimizacion() {
   });
 }
 
-renderResumen();
-loadGastosTemp();
-initConfig();
+(async function initApp(){
+  if(!data.length && SYNC_URL){
+    const el=document.getElementById('mtop');
+    if(el)el.innerHTML='<div class="col-span-4 bg-white rounded-xl p-8 border border-slate-100 text-center"><p class="text-slate-400 text-sm">Restaurando datos desde Google Sheets...</p></div>';
+    try{
+      const res=await fetch(SYNC_URL);
+      const restored=await res.json();
+      if(Array.isArray(restored)&&restored.length){
+        data=migrarData(restored);_lsSet(data);
+        updateSyncStatus('✓ Datos restaurados desde backup ('+data.length+' meses)');
+      }
+    }catch(e){}
+  }
+  renderResumen();
+  loadGastosTemp();
+  loadIngresosTemp();
+  initConfig();
+})();
 </script>
 </body>
 </html>
