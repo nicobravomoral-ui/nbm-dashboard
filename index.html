@@ -283,7 +283,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
         <div class="bg-white rounded-xl p-6 border border-slate-100">
           <div class="flex items-center gap-2 mb-5">
             <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 font-headline">Comisiones del mes</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 font-headline">Facturas / ingresos del mes</span>
           </div>
           <div class="fr2">
             <div class="field"><label>Mes</label>
@@ -665,6 +665,7 @@ function migrarData(arr){
   });
 }
 let data=migrarData(_lsGet());
+if(data.length)_lsSet(data); // persistir migración
 let gTemp=[];
 let iTemp=[];
 let MC=null,PC=null,OC=null;
@@ -784,6 +785,7 @@ function show(id,btn){
   if(id==='historial')renderHistorial();
   if(id==='proyeccion')renderProyeccion();
   if(id==='optimizacion')renderOptimizacion();
+  if(id==='ingresos')loadIngresosTemp();
   if(id==='gastos')loadGastosTemp();
   if(id==='config')initConfig();
   const titles={'resumen':'Dashboard Tributario','ingresos':'Ingresar ingresos','gastos':'Ingresar gastos','historial':'Historial','proyeccion':'Acumulado real','optimizacion':'Optimización tributaria','config':'Configuración','guia':'Guía tributaria'};
